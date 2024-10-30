@@ -1,0 +1,15 @@
+# Conda environment
+
+name: viscoin
+
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+  - defaults
+
+dependencies:
+  - python=3.12
+
+  # Deep learning libraries
+  - pytorch>=2.5.0
