@@ -13,3 +13,5 @@ dependencies:
 
   # Deep learning libraries
   - pytorch>=2.5.0
+  - tqdm
+  - numpy

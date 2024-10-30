@@ -10,7 +10,7 @@
 
 Implementation of Vision Concept-based Interpretable Networks. [See the paper](https://arxiv.org/abs/2407.01331v1).
 
-This project uses the [Black](https://github.com/psf/black) python formatter.
+This project uses the [Black](https://github.com/psf/black) python formatter. Imports are sorted using [isort](https://pycqa.github.io/isort/).
 
 See also (used in this repository):
 
