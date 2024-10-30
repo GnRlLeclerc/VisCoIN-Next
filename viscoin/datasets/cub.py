@@ -82,7 +82,9 @@ class CUB_200_2011(Dataset):
         if self.bbox_only:
             # Crop the image to include only the bounding box
             x, y, width, height = self.bboxes[index]
-            image = image.crop((x, y, x + width, y + height))
+            image = image.resize(self.image_shape, box=(x, y, x + width, y + height))
+        else:
+            image = image.resize(self.image_shape)
 
         # Apply the transformations
         tensor_image = self.transform(image)
