@@ -20,28 +20,18 @@ jobs:
           fetch-depth: 0 # Ensure full history is fetched, useful if submodules require it
           persist-credentials: false # Avoids using GitHub's default credentials for submodules, preventing permission issues
 
-      - name: Cache conda
-        uses: actions/cache@v3
-        env:
-          # Increase this value to reset cache if etc/example-environment.yml has not changed
-          CACHE_NUMBER: 0
-        with:
-          path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{
-            hashFiles('etc/example-environment.yml') }}
-
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v3
+      - uses: mamba-org/setup-micromamba@v1
         with:
           environment-file: conda.yml
-          activate-environment: viscoin
-          use-only-tar-bz2: true # for caching
+          environment-name: viscoin
+          cache-environment: true
+          cache-downloads: true
 
       - name: Install Pyright and Isort
         run: pip install pyright isort
 
       - name: Run Pyright
-        run: conda run -n viscoin pyright
+        run: micromamba run -n viscoin pyright ./viscoin
 
       - name: Run isort
-        run: conda run -n viscoin isort . --check-only --diff
+        run: micromamba run -n viscoin isort ./viscoin --check-only --diff
