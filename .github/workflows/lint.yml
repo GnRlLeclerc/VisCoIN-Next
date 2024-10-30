@@ -15,6 +15,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: true # Fetch all submodules recursively
+          fetch-depth: 0 # Ensure full history is fetched, useful if submodules require it
+          persist-credentials: false # Avoids using GitHub's default credentials for submodules, preventing permission issues
 
       - name: Cache conda
         uses: actions/cache@v3
@@ -37,7 +41,7 @@ jobs:
         run: pip install pyright isort
 
       - name: Run Pyright
-        run: pyright
+        run: conda run -n viscoin pyright
 
       - name: Run isort
-        run: isort . --check-only --diff
+        run: conda run -n viscoin isort . --check-only --diff
