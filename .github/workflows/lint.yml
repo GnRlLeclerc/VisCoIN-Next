@@ -33,6 +33,9 @@ jobs:
           activate-environment: viscoin
           use-only-tar-bz2: true # for caching
 
+      - name: Install Pyright and Isort
+        run: pip install pyright isort
+
       - name: Run Pyright
         run: pyright
 

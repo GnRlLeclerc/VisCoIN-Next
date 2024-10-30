@@ -17,7 +17,3 @@ dependencies:
   - pillow
   - tqdm
   - numpy
-
-  # Development dependencies
-  - pyright>=1.1.382
-  - isort>=5.13.2
