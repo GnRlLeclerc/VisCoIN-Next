@@ -1,0 +1,29 @@
+name: Lint and Type Check
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: conda.yml
+          auto-activate-base: false
+
+      - name: Run Pyright
+        run: pyright
+
+      - name: Run isort
+        run: isort . --check-only --diff

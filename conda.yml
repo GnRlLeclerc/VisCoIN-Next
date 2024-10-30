@@ -13,5 +13,11 @@ dependencies:
 
   # Deep learning libraries
   - pytorch>=2.5.0
+  - torchvision>=0.20.0
+  - pillow
   - tqdm
   - numpy
+
+  # Development dependencies
+  - pyright
+  - isort

@@ -1,2 +1,6 @@
 [tool.black]
 line-length = 100
+
+[tool.isort]
+profile = "black"                    # Optional: align with Black's formatting style
+skip = ["stylegan2_ada"]
