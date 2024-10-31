@@ -36,7 +36,7 @@ class CUB_200_2011(Dataset):
         Args:
             dataset_path: Path to the downloaded dataset. Defaults to "datasets/CUB_200_2011".
             mode: Whether to consider training or testing data. Defaults to "train".
-            image_shape: the shape to resize each image (the dataset does not have normalized shapes).
+            image_shape: the shape to resize each image (the dataset does not have normalized shapes). Note that (224, 224) is the default shape for ResNets.
             bbox_only: Whether to crop the images to include only the bounding box of the bird.
             transform: Additional optional transformations to perform on loaded images.
         """

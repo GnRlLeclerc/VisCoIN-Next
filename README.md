@@ -23,8 +23,10 @@ See also (used in this repository):
 ├── stylegan2_ada  # Pytorch implementation of StyleGAN2 ADA
 │
 ├── datasets       # Pytorch dataloaders for every dataset
+│   └── cub                 # CUB dataset loader
 │
 ├── models         # Model definitions
+│   ├── classifiers         # Classifier model (`f`)
 │   ├── concept_extractors  # From classifier latent to concepts (`Psi` in VisCoIN)
 │   └── explainers          # From concepts to class (`Theta` in VisCoIN)
 │

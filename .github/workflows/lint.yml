@@ -20,7 +20,8 @@ jobs:
           fetch-depth: 0 # Ensure full history is fetched, useful if submodules require it
           persist-credentials: false # Avoids using GitHub's default credentials for submodules, preventing permission issues
 
-      - uses: mamba-org/setup-micromamba@v1
+      - name: Setup conda environment
+        uses: mamba-org/setup-micromamba@v1
         with:
           environment-file: conda.yml
           environment-name: viscoin
