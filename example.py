@@ -6,7 +6,7 @@ from viscoin.datasets.cub import CUB_200_2011
 from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.models.explainers import Explainer
-from viscoin.training.losses import conciseness_diversity_loss
+from viscoin.training.losses import concept_regularization_loss
 
 N_CLASSES = 200
 N_CONCEPTS = 256
@@ -38,7 +38,7 @@ concept_space, gan_helper_space = concept.forward(hidden[-3:])
 print("Concept space:", concept_space.shape)
 
 # Test loss computation on the concept latent space
-conciseness_diversity_loss(concept_space)
+concept_regularization_loss(concept_space)
 
 # Explainer forward pass
 classes = explainer.forward(concept_space)
