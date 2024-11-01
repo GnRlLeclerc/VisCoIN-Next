@@ -5,7 +5,7 @@ import torch
 from viscoin.datasets.cub import CUB_200_2011
 from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
-from viscoin.models.explainers import Explainer2D
+from viscoin.models.explainers import Explainer
 from viscoin.training.losses import conciseness_diversity_loss
 
 N_CLASSES = 200
@@ -14,7 +14,7 @@ N_CONCEPTS = 256
 
 model = Classifier(resnet="50", output_classes=N_CLASSES, pretrained=True)
 concept = ConceptExtractor(n_concepts=N_CONCEPTS)
-explainer = Explainer2D(n_concepts=N_CONCEPTS, n_classes=N_CLASSES, normalized=True)
+explainer = Explainer(n_concepts=N_CONCEPTS, n_classes=N_CLASSES, normalized=True)
 
 # CUB dataset
 dataset = CUB_200_2011()

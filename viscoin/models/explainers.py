@@ -11,7 +11,7 @@ from torch.nn import functional as F
 from torch.nn.utils import parametrizations as P
 
 
-class Explainer2D(nn.Module):
+class Explainer(nn.Module):
     """Explainer network. Produces a class prediction from a latent concept space.
 
     The concept spaces are 3x3 convolutional maps per concept.
