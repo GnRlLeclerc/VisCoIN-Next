@@ -53,7 +53,9 @@ Clone the StyleGAN2 ADA submodule:
 git submodule update --init
 ```
 
-Run the example script:
+The StyleGAN uses a custom CUDA plugin. You need to install a CUDA compiler (`nvcc`), and export the `CUDA_HOME` environment variable.
+
+Last, the example script:
 
 ```bash
 python example.py
