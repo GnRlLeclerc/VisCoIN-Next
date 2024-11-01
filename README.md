@@ -19,8 +19,10 @@ See also (used in this repository):
 
 ## Project Structure
 
+Structure of the `viscoin` folder.
+
 ```bash
-├── stylegan2_ada  # Pytorch implementation of StyleGAN2 ADA
+├── ../stylegan2_ada  # Pytorch implementation of StyleGAN2 ADA
 │
 ├── datasets       # Pytorch dataloaders for every dataset
 │   └── cub                 # CUB dataset loader
@@ -33,6 +35,7 @@ See also (used in this repository):
 ├── testing        # Testing functions
 │
 └── training       # Training functions
+    └── losses              # Loss functions
 ```
 
 ## Quickstart
