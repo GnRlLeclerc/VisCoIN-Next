@@ -95,7 +95,7 @@ class Classifier(nn.Module):
 
         # Reshape the output (batch_size, last_size, 1, 1) to (batch_size, last_size) after the pooler
         output_state = results["pooler_output"].view(-1, self.last_size)
-        hidden_states = results["hidden_states"]  # Tuple of 4 hidden states
+        hidden_states = results["hidden_states"]  # Tuple of 5 hidden states
 
         # Compute the classes probabilities
         classes = F.softmax(self.linear(output_state), dim=-1)
