@@ -52,3 +52,9 @@ Clone the StyleGAN2 ADA submodule:
 ```bash
 git submodule update --init
 ```
+
+Run the example script:
+
+```bash
+python example.py
+```
