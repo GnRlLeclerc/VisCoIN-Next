@@ -1,8 +1,12 @@
 """Loss functions definitions."""
 
+import lpips
 import torch
 from torch import Tensor
 from torch.nn import functional as F
+
+from viscoin.models.concept_extractors import ConceptExtractor
+from viscoin.models.gan import GeneratorAdapted
 
 
 def entropy_loss(v: Tensor) -> Tensor:
@@ -68,3 +72,105 @@ def concept_regularization_loss(concept_embeddings: Tensor) -> Tensor:
     normed = F.normalize(pooled, p=2, dim=1)
 
     return l1_loss(normed) + l1_loss(concept_embeddings)
+
+
+def concept_orthogonality_loss(model: ConceptExtractor) -> Tensor:
+    """Additional concept loss to enforce orthogonality between concepts.
+
+    Args:
+        model: The concept extractor model, whose weights will be used to compute the loss.
+    """
+
+    # Gather weights from the last convolutional layer before the concept 3x3 embeddings
+    # and view it as shape (n_concepts, -1) to lay out vector weights for each concept
+    concept_weights = model.conv5.weight.view(model.n_concepts, -1)
+    normed_weights = F.normalize(concept_weights, dim=1).abs()
+
+    return (normed_weights @ normed_weights.T - model.n_concepts).sum() / (model.n_concepts**2)
+
+
+###################################################################################################
+#                                  RECONSTRUCTION LOSS FUNCTIONS                                  #
+###################################################################################################
+
+# Cache the LPIPS network to avoid loading it every time
+_lpips_network = lpips.LPIPS(net="vgg")
+
+
+def lpips_loss(reconstructed: Tensor, original: Tensor) -> Tensor:
+    """LPIPS loss function.
+
+    Args:
+        reconstructed: (batch_size, 3, H, W) Reconstructed images.
+        original: (batch_size, 3, H, W) Original images.
+    """
+    return torch.mean(_lpips_network.to(reconstructed.device)(reconstructed, original))
+
+
+def reconstruction_loss(
+    reconstructed: Tensor,
+    original: Tensor,
+    reconstructed_classes: Tensor,
+    original_classes: Tensor,
+    lambda_classes=0.1,
+    lambda_lpips=3.0,
+) -> Tensor:
+    """Image reconstruction loss function.
+
+    Loss = (
+        l1_norm(reconstructed - original)  # L1 loss
+        + l2_norm(reconstructed - original)  # L2 loss
+        + lambda_lpips * lpips(reconstructed, original)  # LPIPS loss (perceptual similarity metric)
+        + lambda_classes * classification_loss(reconstructed, original)  # f(original) - f(reconstructed) classes comparison
+    )
+
+    Args:
+        reconstructed: (batch_size, 3, H, W) Reconstructed images.
+        original: (batch_size, 3, H, W) Original images.
+        reconstructed_classes: (batch_size, n_classes) Reconstructed classes normalized probabilities.
+        original_classes: (batch_size, n_classes) Original classes normalized probabilities.
+        lambda_classes: Classification loss weight.
+        lambda_lpips: LPIPS loss weight.
+    """
+
+    return (
+        F.l1_loss(reconstructed, original)
+        + F.mse_loss(reconstructed, original)
+        + lambda_classes * F.cross_entropy(reconstructed_classes, original_classes.detach())
+        + lambda_lpips * lpips_loss(reconstructed, original)
+    )
+
+
+###################################################################################################
+#                                  OUTPUT FIDELITY LOSS FUNCTIONS                                 #
+###################################################################################################
+
+
+def output_fidelity_loss(original_classes: Tensor, explainer_classes: Tensor) -> Tensor:
+    """Output fidelity loss function. Compares the predictions of the original classifier and
+    those of the explainer network.
+
+    Args:
+        original_classes: (batch_size, n_classes) Original classes normalized probabilities.
+        explainer_classes: (batch_size, n_classes) Explainer classes normalized probabilities.
+    """
+
+    return F.cross_entropy(explainer_classes, original_classes.detach())
+
+
+###################################################################################################
+#                                      STYLEGAN LOSS FUNCTION                                     #
+###################################################################################################
+
+
+def gan_regularization_loss(gan_latents: Tensor, model: GeneratorAdapted) -> Tensor:
+    """StyleGAN regularization loss function.
+
+    Args:
+        gan_latents: (batch_size, w_dim) StyleGAN latents (ws).
+        mode: GeneratorAdapted StyleGAN model.
+    """
+
+    w_mapping = model.mapping.fixed_w_avg.repeat([gan_latents.shape[0], gan_latents.shape[1], 1])
+
+    return F.mse_loss(gan_latents, w_mapping.detach())

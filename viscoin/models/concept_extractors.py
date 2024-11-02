@@ -60,6 +60,7 @@ class ConceptExtractor(nn.Module):
         super().__init__()
 
         self.latent_channels = latent_channels
+        self.n_concepts = n_concepts
 
         # Define convolutional layers to process and normalize each of the input feature maps
         # Resulting shape (batch_size, latent_channels, 7, 7)
