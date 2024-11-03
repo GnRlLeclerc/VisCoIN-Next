@@ -22,3 +22,5 @@ dependencies:
 
   # Utilities
   - click
+  - matplotlib
+  - ninja # Required to build custom StyleGAN plugins

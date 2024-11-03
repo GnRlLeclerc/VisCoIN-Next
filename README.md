@@ -47,6 +47,13 @@ conda env create -f conda.yml  # Create the `viscoin` environment
 conda activate viscoin         # Activate it
 ```
 
+If you encounter an issue, you might have to run the following commands, depending on your conda implementation:
+
+```bash
+conda config --set channel_priority flexible
+micromamba config set channel_priority flexible
+```
+
 Clone the StyleGAN2 ADA submodule:
 
 ```bash
@@ -59,4 +66,53 @@ Last, the example script:
 
 ```bash
 python example.py
+```
+
+## Running jobs with SLURM
+
+There are 2 ways to run jobs on a server that allocates GPUs using SLURM.
+
+Run `sinfo` to see a list of available partitions.
+
+### Interactive
+
+You can run scripts interactively in the terminal with `srun`:
+
+```bash
+srun --gpus=1 --partition=P100 --pty bash  # Open a shell on a GPU node
+srun --gpus=1 --partition=P100 nvidia-smi  # Display the GPU capabilities of a node
+
+# Run a full job interactively
+srun --gpus=1 --partition=P100 --time=00:10:00 --nodes=1 --gpus=1 python main.py test resnet50 --dataset-path datasets/CUB_200_2011/ --batch-size 512
+```
+
+### Background
+
+In order to run jobs in the background, you have to define bash scripts. Jobs running in the background will write their output to a `slurm-<job-id>.out` file.
+
+Example script:
+
+```bash
+/usr/bin/env bash
+
+# Partition for the job:
+#SBATCH --partition=P100
+
+# Multithreaded (SMP) job: must run on one node
+#SBATCH --nodes=1
+
+# Maximum number of GPUS used by the job:
+#SBATCH --gpus=1
+
+# The maximum running time of the job in days-hours:mins:sec (here: 1h)
+#SBATCH --time=0-01:00:00
+
+srun python main.py test resnet50 --dataset-path datasets/CUB_200_2011/ --batch-size 512
+```
+
+You then have to run the script (and interact with it) using these commands:
+
+```bash
+sbatch my-script.bash  # Launch the background job
+squeue -j <job-id>  # See whether the job it still running
 ```
