@@ -7,7 +7,6 @@ by the original classifier model `f` and the output class predicted by the expla
 """
 
 from torch import Tensor, nn
-from torch.nn import functional as F
 from torch.nn.utils import parametrizations as P
 
 
@@ -46,7 +45,7 @@ class Explainer(nn.Module):
         Args:
             x: (batch_size, n_concepts, 3, 3): batched latent concept spaces.
 
-        Returns: a tensor of shape (batch_size, n_classes) with class probability predictions.
+        Returns: a tensor of shape (batch_size, n_classes) with unnormalized class logits.
         """
         x = self.dropout(x)
 
@@ -54,4 +53,4 @@ class Explainer(nn.Module):
         x = self.pool(x).flatten(start_dim=1)
 
         # (batch_size, n_classes)
-        return F.softmax(self.linear(x), dim=1)
+        return self.linear(x)

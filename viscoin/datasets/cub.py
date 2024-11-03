@@ -79,6 +79,10 @@ class CUB_200_2011(Dataset):
         # Load the image
         image = Image.open(f"{self.dataset_path}images/{self.image_paths[index]}")
 
+        # Convert to RGB if needed
+        if image.getbands() == ("L",):
+            image = image.convert("RGB")
+
         if self.bbox_only:
             # Crop the image to include only the bounding box
             x, y, width, height = self.bboxes[index]

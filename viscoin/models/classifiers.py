@@ -7,7 +7,6 @@ from typing import Literal
 
 import torch
 from torch import Tensor, nn
-from torch.nn import functional as F
 from transformers import ResNetConfig, ResNetModel
 
 # Hidden state tuple for ResNet models
@@ -97,7 +96,7 @@ class Classifier(nn.Module):
         output_state = results["pooler_output"].view(-1, self.last_size)
         hidden_states = results["hidden_states"]  # Tuple of 5 hidden states
 
-        # Compute the classes probabilities
-        classes = F.softmax(self.linear(output_state), dim=-1)
+        # Compute the output class unnormalized logits
+        logits = self.linear(output_state)
 
-        return classes, hidden_states
+        return logits, hidden_states

@@ -151,8 +151,8 @@ def output_fidelity_loss(original_classes: Tensor, explainer_classes: Tensor) ->
     those of the explainer network.
 
     Args:
-        original_classes: (batch_size, n_classes) Original classes normalized probabilities.
-        explainer_classes: (batch_size, n_classes) Explainer classes normalized probabilities.
+        original_classes: (batch_size, n_classes) Original classes unnormalized logits.
+        explainer_classes: (batch_size, n_classes) Explainer classes unnormalized logits.
     """
 
     return F.cross_entropy(explainer_classes, original_classes.detach())

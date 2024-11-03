@@ -14,8 +14,7 @@ from viscoin.utils.images import from_torch
 N_CLASSES = 200
 N_CONCEPTS = 256
 
-# NOTE : mémoire juste chargé, c'est 1.4GB memory
-DEVICE = "cuda"  # "cuda"
+DEVICE = "cuda"
 
 
 model = Classifier(resnet="50", output_classes=N_CLASSES, pretrained=True).to(DEVICE)
