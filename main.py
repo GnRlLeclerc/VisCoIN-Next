@@ -5,14 +5,18 @@ Example usage:
 ```bash
 python main.py test resnet50 --batch-size 32 --dataset-path datasets/CUB_200_2011/
 ```
+
+Will be subject to many changes as the project evolves.
 """
 
 import click
+import torch
 from torch.utils.data import DataLoader
 
 from viscoin.datasets.cub import CUB_200_2011
 from viscoin.models.classifiers import Classifier
 from viscoin.testing.classifiers import test_classifier
+from viscoin.training.classifiers import train_classifier
 
 
 @click.group()
@@ -44,8 +48,51 @@ def common_params(func):
 
 @main.command()
 @common_params
-def train():
-    raise NotImplementedError("Training command not implemented yet")
+@click.option(
+    "--epochs",
+    help="The amount of epochs to train the model for",
+    default=21,
+    type=int,
+)
+@click.option(
+    "--output-weights",
+    help="The path/filename where to save the weights",
+    required=True,
+    type=str,
+)
+def train(
+    model_name: str,
+    batch_size: int,
+    device: str,
+    dataset_path: str,
+    classifier_checkpoints: str | None,
+    epochs: int,
+    output_weights: str,
+):
+    """Train a model on a dataset"""
+    train_dataset = CUB_200_2011(dataset_path, mode="train")
+    test_dataset = CUB_200_2011(dataset_path, mode="test")
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    pretrained = classifier_checkpoints is None
+
+    match model_name:
+        case "resnet18":
+            model = Classifier(resnet="18", output_classes=200, pretrained=pretrained).to(device)
+        case "resnet50":
+            model = Classifier(resnet="50", output_classes=200, pretrained=pretrained).to(device)
+        case _:
+            raise ValueError(f"Unknown model name: {model_name}")
+
+    if not pretrained:
+        model.load_state_dict(torch.load(classifier_checkpoints, weights_only=True))
+
+    model = model.to(device)
+
+    train_classifier(model, train_loader, test_loader, device, epochs)
+
+    weights = model.state_dict()
+    torch.save(weights, output_weights)
 
 
 @main.command()
@@ -71,7 +118,9 @@ def test(
         case _:
             raise ValueError(f"Unknown model name: {model_name}")
 
-    # TODO : if not pretrained, load the classifier checkpoints. Add helper methods for this
+    if not pretrained:
+        model.load_state_dict(torch.load(classifier_checkpoints, weights_only=True))
+
     # TODO : if viscoin, specific stuff has to be done to ensure the model parameters are compatible
 
     model = model.to(device)
