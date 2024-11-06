@@ -116,3 +116,10 @@ You then have to run the script (and interact with it) using these commands:
 sbatch my-script.bash  # Launch the background job
 squeue -j <job-id>  # See whether the job it still running
 ```
+
+You can monitor the output using the following command:
+
+```bash
+# You could also use `watch -n 10`, but it has an issue with progress bars
+while true; do clear && cat slurm-<job-id>.out; sleep 10; done
+```

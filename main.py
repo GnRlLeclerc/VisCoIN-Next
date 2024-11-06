@@ -17,6 +17,7 @@ from viscoin.datasets.cub import CUB_200_2011
 from viscoin.models.classifiers import Classifier
 from viscoin.testing.classifiers import test_classifier
 from viscoin.training.classifiers import train_classifier
+from viscoin.utils.logging import configure_score_logging
 
 
 @click.group()
@@ -69,7 +70,11 @@ def train(
     epochs: int,
     output_weights: str,
 ):
-    """Train a model on a dataset"""
+    """Train a model on a dataset.
+
+    A progress bar is displayed during training.
+    Metrics are logged to a file.
+    """
     train_dataset = CUB_200_2011(dataset_path, mode="train")
     test_dataset = CUB_200_2011(dataset_path, mode="test")
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
@@ -89,6 +94,7 @@ def train(
 
     model = model.to(device)
 
+    configure_score_logging(f"{model_name}_{epochs}.log")
     train_classifier(model, train_loader, test_loader, device, epochs)
 
     weights = model.state_dict()

@@ -7,6 +7,7 @@ from tqdm import tqdm
 from viscoin.models.classifiers import Classifier
 from viscoin.testing.classifiers import test_classifier
 from viscoin.training.schedulers import CustomLRScheduler
+from viscoin.utils.logging import get_logger
 
 
 def train_classifier(
@@ -30,6 +31,7 @@ def train_classifier(
     best_accuracy = 0.0
 
     best_model = model.state_dict()
+    logger = get_logger()
 
     # Optimizer and scheduler
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
@@ -87,7 +89,7 @@ def train_classifier(
             best_accuracy = accuracy
 
         # Log the current state of training
-        print(
+        logger.info(
             f"Epoch {epoch}/{epochs} - Train Loss: {batch_mean_loss:.4f} - Train Acc: {accuracy:.4f} - Test Loss: {mean_loss:.4f} - Test Acc: {accuracy:.4f}"
         )
 
