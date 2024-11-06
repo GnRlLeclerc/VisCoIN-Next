@@ -36,7 +36,7 @@ def train_classifier(
     scheduler = CustomLRScheduler(optimizer, [(15, 0.00005), (30, 0.00002)])
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in tqdm(range(1, epochs + 1)):
+    for epoch in tqdm(range(1, epochs + 1), "Training epochs"):
         ###########################################################################################
         #                                      TRAINING STEP                                      #
         ###########################################################################################
@@ -78,7 +78,7 @@ def train_classifier(
         #                                       TESTING STEP                                      #
         ###########################################################################################
 
-        accuracy, mean_loss = test_classifier(model, test_loader, device, criterion)
+        accuracy, mean_loss = test_classifier(model, test_loader, device, criterion, False)
         test_loss.append(mean_loss)
         test_accuracy.append(accuracy)
 

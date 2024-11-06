@@ -9,7 +9,11 @@ from viscoin.models.classifiers import Classifier
 
 
 def test_classifier(
-    model: Classifier, dataloader: DataLoader, device: str, criterion: nn.Module | None = None
+    model: Classifier,
+    dataloader: DataLoader,
+    device: str,
+    criterion: nn.Module | None = None,
+    verbose: bool = True,
 ) -> tuple[float, float]:
     """Test the classifier performance across a testing Dataloader
 
@@ -18,6 +22,7 @@ def test_classifier(
         dataloader: the DataLoader containing the testing dataset
         device: the device to use for the testing
         criterion: the loss function to use for the test (default: nn.CrossEntropyLoss)
+        verbose: whether to print the progress bar (default: True)
 
     Returns:
         accuracy: the accuracy of the model on the testing dataset
@@ -33,7 +38,7 @@ def test_classifier(
         total_loss = 0
         total_samples = 0
 
-        for inputs, targets in tqdm(dataloader, desc="Test batches"):
+        for inputs, targets in tqdm(dataloader, desc="Test batches", disable=not verbose):
             # Move batch to device
             inputs, targets = inputs.to(device), targets.to(device)
 
