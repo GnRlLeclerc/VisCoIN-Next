@@ -15,9 +15,14 @@ import torch
 from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
-from torchvision.transforms import Compose, ToTensor
+from torchvision.transforms import Compose, Normalize, ToTensor
 
 from viscoin.utils.types import Mode
+
+# Computed on the whole CUB dataset
+_CUB_Transform = Compose(
+    [ToTensor(), Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))]
+)
 
 
 class CUB_200_2011(Dataset):
@@ -29,7 +34,7 @@ class CUB_200_2011(Dataset):
         mode: Mode = "train",
         image_shape: tuple[int, int] = (224, 224),
         bbox_only=False,
-        transform: Compose = Compose([ToTensor()]),
+        transform=_CUB_Transform,
     ) -> None:
         """Instantiate a CUB dataset. Its result is saved in a pickle file for faster reloading.
 

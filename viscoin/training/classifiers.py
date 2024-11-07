@@ -34,8 +34,10 @@ def train_classifier(
     logger = get_logger()
 
     # Optimizer and scheduler
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)
-    scheduler = CustomLRScheduler(optimizer, [(15, 0.00005), (30, 0.00002)])
+    # High learning rate
+    optimizer = optim.Adam(model.parameters(), lr=0.1)
+    # Fine-tuning scheduler
+    # scheduler = CustomLRScheduler(optimizer, [(0, 0.0001), (15, 0.00005), (30, 0.00002)])
     criterion = nn.CrossEntropyLoss()
 
     for epoch in tqdm(range(1, epochs + 1), "Training epochs"):
@@ -63,7 +65,7 @@ def train_classifier(
             loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
-            scheduler.step()
+            # scheduler.step()
 
             # Update training metrics
             total_correct += preds.eq(targets.view_as(preds)).sum().item()
