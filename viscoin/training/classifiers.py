@@ -6,12 +6,16 @@ from tqdm import tqdm
 
 from viscoin.models.classifiers import Classifier
 from viscoin.testing.classifiers import test_classifier
-from viscoin.training.schedulers import CustomLRScheduler
 from viscoin.utils.logging import get_logger
 
 
 def train_classifier(
-    model: Classifier, train_loader: DataLoader, test_loader: DataLoader, device: str, epochs: int
+    model: Classifier,
+    train_loader: DataLoader,
+    test_loader: DataLoader,
+    device: str,
+    epochs: int,
+    learning_rate: float,
 ):
     """Train the classifier model. The best model on testing data is loaded into the classifier instance.
 
@@ -23,6 +27,7 @@ def train_classifier(
         test_loader: the DataLoader containing the testing dataset
         device: the device to use for training
         epochs: the number of epochs to train the model
+        learning_rate: the learning rate to use for the optimizer
     """
     test_loss: list[float] = []
     train_loss: list[float] = []
@@ -35,9 +40,8 @@ def train_classifier(
 
     # Optimizer and scheduler
     # High learning rate
-    optimizer = optim.Adam(model.parameters(), lr=0.1)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     # Fine-tuning scheduler
-    # scheduler = CustomLRScheduler(optimizer, [(0, 0.0001), (15, 0.00005), (30, 0.00002)])
     criterion = nn.CrossEntropyLoss()
 
     for epoch in tqdm(range(1, epochs + 1), "Training epochs"):
@@ -65,7 +69,6 @@ def train_classifier(
             loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
-            # scheduler.step()
 
             # Update training metrics
             total_correct += preds.eq(targets.view_as(preds)).sum().item()

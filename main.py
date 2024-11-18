@@ -56,6 +56,12 @@ def common_params(func):
     type=int,
 )
 @click.option(
+    "--learning-rate",
+    help="The optimizer learning rate",
+    default=0.01,
+    type=float,
+)
+@click.option(
     "--output-weights",
     help="The path/filename where to save the weights",
     required=True,
@@ -68,6 +74,7 @@ def train(
     dataset_path: str,
     classifier_checkpoints: str | None,
     epochs: int,
+    learning_rate: float,
     output_weights: str,
 ):
     """Train a model on a dataset.
@@ -95,7 +102,7 @@ def train(
     model = model.to(device)
 
     configure_score_logging(f"{model_name}_{epochs}.log")
-    train_classifier(model, train_loader, test_loader, device, epochs)
+    train_classifier(model, train_loader, test_loader, device, epochs, learning_rate)
 
     weights = model.state_dict()
     torch.save(weights, output_weights)
