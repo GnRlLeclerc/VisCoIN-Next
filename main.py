@@ -52,7 +52,7 @@ def common_params(func):
 @click.option(
     "--epochs",
     help="The amount of epochs to train the model for",
-    default=180,
+    default=160,
     type=int,
 )
 @click.option(

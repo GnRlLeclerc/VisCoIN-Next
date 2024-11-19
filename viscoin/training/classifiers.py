@@ -46,7 +46,7 @@ def train_classifier(
     optimizer = optim.SGD(
         model.parameters(), lr=learning_rate, momentum=sgd_momentum, weight_decay=sgd_weight_decay
     )
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=60, gamma=0.1)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=80, gamma=0.1)
     # Fine-tuning scheduler
     criterion = nn.CrossEntropyLoss()
 
