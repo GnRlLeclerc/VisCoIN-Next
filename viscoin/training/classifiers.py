@@ -16,6 +16,8 @@ def train_classifier(
     device: str,
     epochs: int,
     learning_rate: float,
+    sgd_momentum: float,
+    sgd_weight_decay: float,
 ):
     """Train the classifier model. The best model on testing data is loaded into the classifier instance.
 
@@ -27,7 +29,9 @@ def train_classifier(
         test_loader: the DataLoader containing the testing dataset
         device: the device to use for training
         epochs: the number of epochs to train the model
-        learning_rate: the learning rate to use for the optimizer
+        learning_rate: the learning rate for the SGD optimizer
+        sgd_momentum: the momentum for the SGD optimizer
+        sgd_weight_decay: the weight decay for the SGD optimizer
     """
     test_loss: list[float] = []
     train_loss: list[float] = []
@@ -39,8 +43,10 @@ def train_classifier(
     logger = get_logger()
 
     # Optimizer and scheduler
-    # High learning rate
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = optim.SGD(
+        model.parameters(), lr=learning_rate, momentum=sgd_momentum, weight_decay=sgd_weight_decay
+    )
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
     # Fine-tuning scheduler
     criterion = nn.CrossEntropyLoss()
 
@@ -80,6 +86,7 @@ def train_classifier(
         batch_mean_loss = total_loss / len(train_loader)
         train_loss.append(batch_mean_loss)
         train_accuracy.append(accuracy)
+        scheduler.step()
 
         ###########################################################################################
         #                                       TESTING STEP                                      #

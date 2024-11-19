@@ -73,6 +73,9 @@ class Classifier(nn.Module):
         self.last_size = self.resnet.config.hidden_sizes[-1]
         self.linear = nn.Linear(self.last_size, output_classes)
 
+        # Apply Kaiming initialization to the last layer (only effective if not pretrained)
+        nn.init.kaiming_normal_(self.linear.weight)
+
     def load_weights(self, filename: str):
         """Load the weights of the model from a file."""
         self.load_state_dict(torch.load(filename, weights_only=True))
