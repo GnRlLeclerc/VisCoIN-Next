@@ -98,7 +98,7 @@ def train(
     """
     train_dataset = CUB_200_2011(dataset_path, mode="train")
     test_dataset = CUB_200_2011(dataset_path, mode="test")
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     pretrained = classifier_checkpoints is None
 
