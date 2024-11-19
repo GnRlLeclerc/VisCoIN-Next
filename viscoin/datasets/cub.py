@@ -15,14 +15,10 @@ import torch
 from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
-from torchvision.transforms import Compose, Normalize, ToTensor
+from torchvision.transforms import Compose
 
+from viscoin.datasets.transforms import RESNET_TEST_TRANSFORM, RESNET_TRAIN_TRANSFORM
 from viscoin.utils.types import Mode
-
-# Computed on the whole CUB dataset
-_CUB_Transform = Compose(
-    [ToTensor(), Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))]
-)
 
 
 class CUB_200_2011(Dataset):
@@ -34,7 +30,7 @@ class CUB_200_2011(Dataset):
         mode: Mode = "train",
         image_shape: tuple[int, int] = (224, 224),
         bbox_only=False,
-        transform=_CUB_Transform,
+        transform: Compose | None = None,
     ) -> None:
         """Instantiate a CUB dataset. Its result is saved in a pickle file for faster reloading.
 
@@ -43,7 +39,7 @@ class CUB_200_2011(Dataset):
             mode: Whether to consider training or testing data. Defaults to "train".
             image_shape: the shape to resize each image (the dataset does not have normalized shapes). Note that (224, 224) is the default shape for ResNets.
             bbox_only: Whether to crop the images to include only the bounding box of the bird.
-            transform: Additional optional transformations to perform on loaded images.
+            transform: Additional optional transformations to perform on loaded images. Will default to the appropriate one given the mode.
         """
 
         assert os.path.exists(dataset_path), f'Dataset path "{dataset_path}" not found.'
@@ -52,6 +48,13 @@ class CUB_200_2011(Dataset):
         self.mode: Mode = mode
         self.image_shape = image_shape
         self.bbox_only = bbox_only
+
+        # Load appropriate transformations if none are provided
+        if transform is None:
+            if self.mode == "train":
+                transform = RESNET_TRAIN_TRANSFORM
+            else:
+                transform = RESNET_TEST_TRANSFORM
         self.transform = transform
 
         # Load the metadata
@@ -105,12 +108,6 @@ class CUB_200_2011(Dataset):
             raise ValueError("The transform must return a tensor.")
 
         return tensor_image
-
-    def set_mode(self, mode: Mode):
-        """Set the mode of the dataset (train or test).
-        Use this instead of creating 2 different instances of this dataset."""
-
-        self.mode = mode
 
     def __len__(self):
         """Returns the length of the dataset (depends on the test/train mode)."""
