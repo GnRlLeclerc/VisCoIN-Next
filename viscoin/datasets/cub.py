@@ -138,10 +138,9 @@ class CUB_200_2011(Dataset):
         return image, label
 
 
-
 class Labeled_CUB_200_2011(CUB_200_2011):
     """CUB 200 2011 dataset with captions generated from the class and attributes of each image."""
-    
+
     def __init__(
         self,
         dataset_path="datasets/CUB_200_2011/",
@@ -160,61 +159,80 @@ class Labeled_CUB_200_2011(CUB_200_2011):
             bbox_only: Whether to crop the images to include only the bounding box of the bird.
             transform: Additional optional transformations to perform on loaded images. Will default to the appropriate one given the mode.
         """
-        
+
         super().__init__(dataset_path, mode, image_shape, bbox_only, transform)
-        
+
         # Load the attributes labels as a dictionary: {attribute_id: label}
-        self.attributes_labels = {int(k): v for k, v in np.loadtxt(f"{self.dataset_path}attributes/attributes.txt", dtype=str, delimiter=" ")}
-        
+        self.attributes_labels = {
+            int(k): v
+            for k, v in np.loadtxt(
+                f"{self.dataset_path}attributes/attributes.txt", dtype=str, delimiter=" "
+            )
+        }
+
         # Load the attributes for each image
-        self.attributes_file = np.loadtxt(f"{self.dataset_path}attributes/image_attribute_labels_clean.txt", dtype=int, delimiter=" ")
+        self.attributes_file = np.loadtxt(
+            f"{self.dataset_path}attributes/image_attribute_labels_clean.txt",
+            dtype=int,
+            delimiter=" ",
+        )
         self.attributes = [[]]
-        
+
         curr_img = 1
         # We create an attribute list for each image by looping through all the attributes and selecting the present ones
         for cols in self.attributes_file:
-            
+
             # If the current image is different from the previous one, append a new list
             if cols[0] != curr_img:
-                self.attributes[curr_img - 1] = np.array(self.attributes[curr_img - 1])
+                self.attributes[curr_img - 1] = np.array(self.attributes[curr_img - 1])  # type: ignore
                 curr_img += 1
                 self.attributes.append([])
-                
+
             # If the attribute is present, append it to the list
             if cols[2] == 1:
                 self.attributes[curr_img - 1].append(cols[1])
-                
-        self.attributes[curr_img - 1] = np.array(self.attributes[curr_img - 1])
-        
+
+        self.attributes[curr_img - 1] = np.array(self.attributes[curr_img - 1])  # type: ignore
+
         self.attributes_per_label = attributes_per_label
-        
+
         # Retrieve the class labels for each image
-        self.class_labels = {int(k): v.split('.')[1].replace('_', ' ') for k, v in np.loadtxt(f"{self.dataset_path}classes.txt", dtype=str, delimiter=" ")} # Names of the 200 classes
-        self.image_classes = np.loadtxt(f"{self.dataset_path}image_class_labels.txt", dtype=int, delimiter=" ") # Class label id for each image
-        
+        self.class_labels = {
+            int(k): v.split(".")[1].replace("_", " ")
+            for k, v in np.loadtxt(f"{self.dataset_path}classes.txt", dtype=str, delimiter=" ")
+        }  # Names of the 200 classes
+        self.image_classes = np.loadtxt(
+            f"{self.dataset_path}image_class_labels.txt", dtype=int, delimiter=" "
+        )  # Class label id for each image
+
     def get_caption(self, index: int) -> str:
         """Get a caption for an image by index from its class and attributes."""
-        
+
         # Get the class label for the image
         class_name = self.class_labels[self.image_classes[index][1]]
-        
+
         # Get the attributes for the image
         attributes = self.attributes[index]
         attribute_labels = [self.attributes_labels[attr].split("::") for attr in attributes]
-        
-        get_attribute_caption = lambda attr: f"with {attr[1].replace("_", " ")}{attr[0].lstrip("has").replace("_", " ")}"
-        
+
+        get_attribute_caption = (
+            lambda attr: f"with {attr[1].replace("_", " ")}{attr[0].lstrip("has").replace("_", " ")}"
+        )
+
         # Get random attribute indices
-        random_attributes_indices = np.random.choice(len(attribute_labels), self.attributes_per_label, replace=False)
-        random_attribute_captions = [get_attribute_caption(attribute_labels[i]) for i in random_attributes_indices]
-        
+        random_attributes_indices = np.random.choice(
+            len(attribute_labels), self.attributes_per_label, replace=False
+        )
+        random_attribute_captions = [
+            get_attribute_caption(attribute_labels[i]) for i in random_attributes_indices
+        ]
+
         # Get the caption
         caption = f"A picture of a {class_name} {', '.join(random_attribute_captions)}."
-        
+
         return caption
-        
-    def __getitem__(self, index):
+
+    def __getitem__(self, index):  # type: ignore
         image, label = super().__getitem__(index)
         return image, label, self.get_caption(index)
-        
-        
+
