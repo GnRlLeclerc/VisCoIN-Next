@@ -235,4 +235,3 @@ class Labeled_CUB_200_2011(CUB_200_2011):
     def __getitem__(self, index):  # type: ignore
         image, label = super().__getitem__(index)
         return image, label, self.get_caption(index)
-

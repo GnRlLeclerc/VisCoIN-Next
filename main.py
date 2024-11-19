@@ -52,13 +52,25 @@ def common_params(func):
 @click.option(
     "--epochs",
     help="The amount of epochs to train the model for",
-    default=21,
+    default=95,
     type=int,
 )
 @click.option(
     "--learning-rate",
     help="The optimizer learning rate",
-    default=0.01,
+    default=0.001,
+    type=float,
+)
+@click.option(
+    "--sgd_momentum",
+    help="The SGD optimizer momentum",
+    default=0.9,
+    type=float,
+)
+@click.option(
+    "--sgd_weight_decay",
+    help="The SGD optimizer weight decay",
+    default=1e-4,
     type=float,
 )
 @click.option(
@@ -75,6 +87,8 @@ def train(
     classifier_checkpoints: str | None,
     epochs: int,
     learning_rate: float,
+    sgd_momentum: float,
+    sgd_weight_decay: float,
     output_weights: str,
 ):
     """Train a model on a dataset.
@@ -102,7 +116,16 @@ def train(
     model = model.to(device)
 
     configure_score_logging(f"{model_name}_{epochs}.log")
-    train_classifier(model, train_loader, test_loader, device, epochs, learning_rate)
+    train_classifier(
+        model,
+        train_loader,
+        test_loader,
+        device,
+        epochs,
+        learning_rate,
+        sgd_momentum,
+        sgd_weight_decay,
+    )
 
     weights = model.state_dict()
     torch.save(weights, output_weights)
