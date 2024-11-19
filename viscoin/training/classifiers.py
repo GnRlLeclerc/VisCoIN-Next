@@ -46,7 +46,7 @@ def train_classifier(
     optimizer = optim.SGD(
         model.parameters(), lr=learning_rate, momentum=sgd_momentum, weight_decay=sgd_weight_decay
     )
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=60, gamma=0.1)
     # Fine-tuning scheduler
     criterion = nn.CrossEntropyLoss()
 
@@ -69,16 +69,17 @@ def train_classifier(
             # Compute logits
             optimizer.zero_grad()
             outputs, _ = model(inputs)
-            preds = outputs.argmax(dim=1, keepdim=True)
+            loss = criterion(outputs, targets)
+            current_loss = loss.item()
 
             # Compute loss and backpropagate
-            loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
 
             # Update training metrics
-            total_correct += preds.eq(targets.view_as(preds)).sum().item()
-            total_loss += loss.item()
+            preds = outputs.argmax(dim=1, keepdim=True)
+            total_correct += preds.eq(targets).sum().item()
+            total_loss += current_loss
             total_samples += targets.size(0)
 
         # Append training metrics
