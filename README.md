@@ -25,16 +25,20 @@ Structure of the `viscoin` folder.
 ├── ../stylegan2_ada  # Pytorch implementation of StyleGAN2 ADA
 │
 ├── datasets       # Pytorch dataloaders for every dataset
-│   └── cub                 # CUB dataset loader
+│   ├── cub                 # CUB dataset loader
+│   └── transforms          # Standard dataset preprocessing transformations
 │
 ├── models         # Model definitions
 │   ├── classifiers         # Classifier model (`f`)
 │   ├── concept_extractors  # From classifier latent to concepts (`Psi` in VisCoIN)
-│   └── explainers          # From concepts to class (`Theta` in VisCoIN)
+│   ├── explainers          # From concepts to class (`Theta` in VisCoIN)
+│   └── gan                 # StyleGAN implementation (modified stylegan2_ada)
 │
 ├── testing        # Testing functions
+│   └── classifiers         # Testing function for the classifier
 │
 └── training       # Training functions
+    ├── classifiers         # Training function for the classifier
     └── losses              # Loss functions
 ```
 
