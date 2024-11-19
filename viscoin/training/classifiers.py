@@ -82,7 +82,7 @@ def train_classifier(
             total_samples += targets.size(0)
 
         # Append training metrics
-        accuracy = total_correct / total_samples
+        accuracy = 100 * total_correct / total_samples
         batch_mean_loss = total_loss / len(train_loader)
         train_loss.append(batch_mean_loss)
         train_accuracy.append(accuracy)
@@ -102,7 +102,7 @@ def train_classifier(
 
         # Log the current state of training
         logger.info(
-            f"Epoch {epoch}/{epochs} - Train Loss: {batch_mean_loss:.4f} - Train Acc: {accuracy:.4f} - Test Loss: {mean_loss:.4f} - Test Acc: {accuracy:.4f}"
+            f"Epoch {epoch}/{epochs} - Train Loss: {batch_mean_loss:.4f} - Train Acc: {accuracy:.2f}% - Test Loss: {mean_loss:.4f} - Test Acc: {accuracy:.2f}%"
         )
 
     # Load the best model
