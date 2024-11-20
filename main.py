@@ -52,7 +52,7 @@ def common_params(func):
 @click.option(
     "--epochs",
     help="The amount of epochs to train the model for",
-    default=160,
+    default=90,
     type=int,
 )
 @click.option(
@@ -62,14 +62,8 @@ def common_params(func):
     type=float,
 )
 @click.option(
-    "--sgd_momentum",
-    help="The SGD optimizer momentum",
-    default=0.9,
-    type=float,
-)
-@click.option(
-    "--sgd_weight_decay",
-    help="The SGD optimizer weight decay",
+    "--weight_decay",
+    help="The optimizer weight decay",
     default=1e-4,
     type=float,
 )
@@ -87,8 +81,7 @@ def train(
     classifier_checkpoints: str | None,
     epochs: int,
     learning_rate: float,
-    sgd_momentum: float,
-    sgd_weight_decay: float,
+    weight_decay: float,
     output_weights: str,
 ):
     """Train a model on a dataset.
@@ -123,8 +116,7 @@ def train(
         device,
         epochs,
         learning_rate,
-        sgd_momentum,
-        sgd_weight_decay,
+        weight_decay,
     )
 
     weights = model.state_dict()
