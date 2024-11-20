@@ -1,4 +1,13 @@
-"""Classifier training functions."""
+"""Classifier training functions.
+
+Best parameters:
+- Adam optimizer
+    - Learning rate: 0.001
+    - Weight decay: 1e-4
+- Epochs: 90
+- LR Scheduler: StepLR(step=30, gamma=0.1)
+- batch size: 32
+"""
 
 from torch import nn, optim
 from torch.utils.data import DataLoader
@@ -78,7 +87,7 @@ def train_classifier(
             total_samples += targets.size(0)
 
         # Append training metrics
-        accuracy = 100 * total_correct / total_samples
+        accuracy = total_correct / total_samples
         batch_mean_loss = total_loss / len(train_loader)
         train_loss.append(batch_mean_loss)
         train_accuracy.append(accuracy)
@@ -98,7 +107,7 @@ def train_classifier(
 
         # Log the current state of training
         logger.info(
-            f"Epoch {epoch}/{epochs} - Train Loss: {batch_mean_loss:.4f} - Train Acc: {accuracy:.2f}% - Test Loss: {mean_loss:.4f} - Test Acc: {accuracy:.2f}%"
+            f"Epoch {epoch}/{epochs} - Train Loss: {batch_mean_loss:.4f} - Train Acc: {100 * accuracy:.2f}% - Test Loss: {mean_loss:.4f} - Test Acc: {100 * accuracy:.2f}%"
         )
 
     # Load the best model

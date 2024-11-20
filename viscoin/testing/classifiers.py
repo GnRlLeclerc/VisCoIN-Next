@@ -51,7 +51,7 @@ def test_classifier(
             total_loss += criterion(outputs, targets).item()
             total_samples += targets.size(0)
 
-    accuracy = 100 * total_correct / total_samples
+    accuracy = total_correct / total_samples
     batch_mean_loss = total_loss / len(dataloader)
 
     return accuracy, batch_mean_loss
