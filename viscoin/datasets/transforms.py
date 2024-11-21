@@ -12,7 +12,7 @@ from torchvision import transforms
 """
 RESNET_TRAIN_TRANSFORM = transforms.Compose(
     [
-        transforms.RandomResizedCrop(224),
+        transforms.RandomResizedCrop(256),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
@@ -26,8 +26,8 @@ RESNET_TRAIN_TRANSFORM = transforms.Compose(
 """
 RESNET_TEST_TRANSFORM = transforms.Compose(
     [
-        transforms.Resize(int(224 / 0.875)),
-        transforms.CenterCrop(224),
+        transforms.Resize(int(256 / 0.875)),
+        transforms.CenterCrop(256),
         transforms.ToTensor(),
         transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
     ]

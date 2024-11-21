@@ -28,7 +28,7 @@ class CUB_200_2011(Dataset):
         self,
         dataset_path="datasets/CUB_200_2011/",
         mode: Mode = "train",
-        image_shape: tuple[int, int] = (224, 224),
+        image_shape: tuple[int, int] = (256, 256),
         bbox_only=False,
         transform: Compose | None = None,
     ) -> None:
@@ -143,7 +143,7 @@ class Labeled_CUB_200_2011(CUB_200_2011):
         dataset_path="datasets/CUB_200_2011/",
         attributes_per_label: int = 3,
         mode: Mode = "train",
-        image_shape: tuple[int, int] = (224, 224),
+        image_shape: tuple[int, int] = (256, 256),
         bbox_only=False,
         transform: Compose | None = None,
     ) -> None:

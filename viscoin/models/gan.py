@@ -91,7 +91,7 @@ class GeneratorAdapted(torch.nn.Module):
 
 
 class MappingNetworkAdapted(torch.nn.Module):
-    """Mapping networj adapted for VisCoIN"""
+    """Mapping network adapted for VisCoIN"""
 
     def __init__(
         self,

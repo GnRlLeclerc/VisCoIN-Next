@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 from viscoin.datasets.cub import CUB_200_2011
 from viscoin.models.classifiers import Classifier
 from viscoin.testing.classifiers import test_classifier
-from viscoin.training.classifiers import train_classifier
+from viscoin.training.classifiers import train_classifier_cub
 from viscoin.utils.logging import configure_score_logging
 
 
@@ -52,19 +52,13 @@ def common_params(func):
 @click.option(
     "--epochs",
     help="The amount of epochs to train the model for",
-    default=90,
+    default=30,
     type=int,
 )
 @click.option(
     "--learning-rate",
     help="The optimizer learning rate",
-    default=0.001,
-    type=float,
-)
-@click.option(
-    "--weight_decay",
-    help="The optimizer weight decay",
-    default=1e-4,
+    default=0.0001,
     type=float,
 )
 @click.option(
@@ -81,7 +75,6 @@ def train(
     classifier_checkpoints: str | None,
     epochs: int,
     learning_rate: float,
-    weight_decay: float,
     output_weights: str,
 ):
     """Train a model on a dataset.
@@ -109,14 +102,13 @@ def train(
     model = model.to(device)
 
     configure_score_logging(f"{model_name}_{epochs}.log")
-    train_classifier(
+    train_classifier_cub(
         model,
         train_loader,
         test_loader,
         device,
         epochs,
         learning_rate,
-        weight_decay,
     )
 
     weights = model.state_dict()

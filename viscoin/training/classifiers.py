@@ -18,16 +18,15 @@ from viscoin.testing.classifiers import test_classifier
 from viscoin.utils.logging import get_logger
 
 
-def train_classifier(
+def train_classifier_cub(
     model: Classifier,
     train_loader: DataLoader,
     test_loader: DataLoader,
     device: str,
-    epochs: int,
-    learning_rate: float,
-    weight_decay: float,
+    epochs: int = 30,
+    learning_rate: float = 0.0001,
 ):
-    """Train the classifier model. The best model on testing data is loaded into the classifier instance.
+    """Train the classifier model for the CUB dataset. The best model on testing data is loaded into the classifier instance.
 
     Note: the losses are averaged over batches.
 
@@ -38,7 +37,6 @@ def train_classifier(
         device: the device to use for training
         epochs: the number of epochs to train the model
         learning_rate: the learning rate for the optimizer
-        weight_decay: the weight decay for the optimizer
     """
     test_loss: list[float] = []
     train_loss: list[float] = []
@@ -50,7 +48,7 @@ def train_classifier(
     logger = get_logger()
 
     # Optimizer and scheduler
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
     criterion = nn.CrossEntropyLoss()
 
