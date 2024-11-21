@@ -34,7 +34,7 @@ def load_viscoin(
     path: str,
 ):
     """Jointly load the checkpoints of the VisCoIN models."""
-    checkpoints = torch.load(path)
+    checkpoints = torch.load(path, weights_only=True)
 
     classifier.load_state_dict(checkpoints["classifier"])
     concept_extractor.load_state_dict(checkpoints["concept_extractor"])

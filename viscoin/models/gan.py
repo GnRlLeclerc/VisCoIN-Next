@@ -127,9 +127,9 @@ class MappingNetworkAdapted(torch.nn.Module):
         features_list1 = [z1_dim + embed_features] + [layer_features] * (num_layers - 1) + [w_dim]
         features_list2 = [z2_dim + embed_features] + [layer_features] * (num_layers - 1) + [w_dim]
         if fixed_w_avg is not None:
-            self.fixed_w_avg = fixed_w_avg
-        # NOTE : additional fix after Jayneel's code, initializing fixed_w_avg if not provided
+            self.fixed_w_avg = torch.nn.Parameter(fixed_w_avg)
         else:
+            # NOTE : additional fix after Jayneel's code, initializing fixed_w_avg if not provided
             self.fixed_w_avg = torch.nn.Parameter(torch.zeros([w_dim]))
 
         for i in range(num_ws):
@@ -153,9 +153,6 @@ class MappingNetworkAdapted(torch.nn.Module):
 
             layer = torch.nn.Sequential(*layers)
             setattr(self, f"s{i}", layer)
-
-        if num_ws is not None and w_avg_beta is not None:
-            self.register_buffer("w_avg", torch.zeros([w_dim]))
 
     def forward(self, z1, z2, truncation_psi=1, truncation_cutoff=None, skip_w_avg_update=True):
         # Embed, normalize, and concat inputs.
