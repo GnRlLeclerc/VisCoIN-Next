@@ -127,3 +127,15 @@ You can monitor the output using the following command:
 # You could also use `watch -n 10`, but it has an issue with progress bars
 while true; do clear && cat slurm-<job-id>.out; sleep 10; done
 ```
+
+## Hyperparameters
+
+Hyperparameters used on different datasets for the training of the different VisCoIN models.
+
+### Classifier
+
+| Dataset       | Optimizer | Learning Rate              | Epochs |
+| ------------- | --------- | -------------------------- | ------ |
+| CUB           | Adam      | 0.0001                     | 30     |
+| CelebA-HQ     | Adam      | 0.001                      | 10     |
+| Stanford-Cars | SGD       | 0.1 (x0.1 every 30 epochs) | 90     |
