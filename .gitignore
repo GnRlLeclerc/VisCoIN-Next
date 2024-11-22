@@ -8,6 +8,7 @@ __pycache__/
 # Model checkpoints
 /checkpoints
 *.pt
+*.pkl
 
 # Logs
 *.log

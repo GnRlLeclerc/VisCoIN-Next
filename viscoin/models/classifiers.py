@@ -37,7 +37,7 @@ class Classifier(nn.Module):
     hidden config [256, 512, 1024, 2048]
     """
 
-    def __init__(self, resnet: Literal["18", "50"], output_classes=200, pretrained=True) -> None:
+    def __init__(self, output_classes=200, pretrained=True) -> None:
         """Initialize a ResNet-based classifier model with a custom head on top for classification.
 
         Args:
@@ -60,7 +60,7 @@ class Classifier(nn.Module):
         """
         super().__init__()
 
-        model_name = f"microsoft/resnet-{resnet}"
+        model_name = f"microsoft/resnet-50"
 
         # Load the model
         if pretrained:

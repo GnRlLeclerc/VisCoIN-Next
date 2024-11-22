@@ -130,6 +130,8 @@ while true; do clear && cat slurm-<job-id>.out; sleep 10; done
 
 ## Hyperparameters
 
+### Models
+
 Hyperparameters used on different datasets for the training of the different VisCoIN models.
 
 ### Classifier
@@ -139,3 +141,49 @@ Hyperparameters used on different datasets for the training of the different Vis
 | CUB           | Adam      | 0.0001                     | 30     |
 | CelebA-HQ     | Adam      | 0.001                      | 10     |
 | Stanford-Cars | SGD       | 0.1 (x0.1 every 30 epochs) | 90     |
+
+### GAN
+
+The GAN is pretrained. Model instance parameters:
+
+For the original stylegan which we have pretrained weights for:
+```python
+generator = Generator(
+    z_dim=512,
+    c_dim=0,
+    w_dim=512,
+    img_resolution=256,
+    img_channels=3,
+    mapping_kwargs={
+        "num_layers": 2,
+        "w_avg_beta": 0.995,
+    }
+)
+```
+
+For the adapted VisCoIN GAN:
+```python
+generator = GeneratorAdapted(
+    z_dim=256,  # concepts
+    c_dim=0,  # no conditionning label
+    w_dim=512,  # intermediate latent dimensionality
+    img_resolution=256,  # image size
+    img_channels=3,  # RGB
+    mapping_kwargs={
+        "num_layers": 1,
+        "fixed_w_avg": None,
+        "coarse_layer": 2,
+        "mid_layer": 10,
+    },
+)
+```
+
+### VisCoIN
+
+For all datasets and all subnetworks:
+
+| Optimizer | Learning Rate | Epochs                         | Batch Size                        |
+| --------- | ------------- | ------------------------------ | --------------------------------- |
+| Adam      | 0.0001        | 100,000 (50,000 for CelebA-HQ) | 16 (8 original + 8 gan generated) |
+
+
