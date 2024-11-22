@@ -1,0 +1,245 @@
+"""
+Training function for the whole viscoin model.
+"""
+
+import itertools
+from dataclasses import dataclass
+
+import torch
+import torch.nn.functional as F
+from torch import optim
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from stylegan2_ada.training.networks import Generator
+from viscoin.models.classifiers import Classifier
+from viscoin.models.concept_extractors import ConceptExtractor
+from viscoin.models.explainers import Explainer
+from viscoin.models.gan import GeneratorAdapted
+from viscoin.models.utils import save_viscoin
+from viscoin.testing.viscoin import test_viscoin
+from viscoin.training.losses import (
+    concept_orthogonality_loss,
+    concept_regularization_loss,
+    cross_cross_entropy_loss,
+    gan_regularization_loss,
+    output_fidelity_loss,
+    reconstruction_loss,
+)
+from viscoin.training.utils import (
+    loop_iter,
+    requires_grad,
+    synthetic_samples,
+    update_lr,
+)
+from viscoin.utils.logging import get_logger
+
+
+@dataclass
+class TrainingParameters:
+    """Training parameters for the VisCoIN ensemble.
+    The default are for CUB (see page 25 of the paper).
+
+    Args:
+        iterations: The number of iterations to train the ensemble.
+        learning_rate: The learning rate for the optimizers.
+        cd_fid_iteration: The iteration at which we start to compute the concept diversity and fidelity loss.
+        alpha: The output fidelity loss coefficient.
+        beta: The LPIPS loss coefficient.
+        gamma: The reconstruction classification loss coefficient.
+        delta: The sparsity loss coefficient.
+    """
+
+    # Generic params
+    iterations = 100_000
+    learning_rate = 0.0001
+    cd_fid_iteration = 100
+
+    # Loss coefficients
+    alpha = 0.5  # Output fidelity loss
+    beta = 3.0  # LPIPS loss
+    gamma = 0.1  # Reconstruction classification loss
+    delta = 0.2  # Sparsity loss
+
+
+def train_viscoin_cub(
+    # Models
+    classifier: Classifier,
+    concept_extractor: ConceptExtractor,
+    explainer: Explainer,
+    viscoin_gan: GeneratorAdapted,
+    generator_gan: Generator,
+    # Loaders
+    train_loader: DataLoader,
+    test_loader: DataLoader,
+    # Training parameters
+    params: TrainingParameters,
+    device: str,
+):
+    """Train the VisCoIN ensemble on the CUB dataset, using the parameters defined in the paper.
+
+    Args:
+        classifier: The classifier model to explain.
+        concept_extractor: The concept extractor model.
+        explainer: The explainer model.
+        viscoin_gan: The adapted GAN model that will try to reconstruct the input.
+        generator_gan: The GAN model that will generate synthetic samples for the training loop.
+        train_loader: The training dataloader.
+        test_loader: The test dataloader.
+        test_loader: The test dataloader.
+        device: The device to use.
+    """
+
+    best_accuracy = 0.0
+    # best_model = model.state_dict()
+    logger = get_logger()
+
+    # Model preparations
+    classifier.eval()  # Freeze the classifier
+    requires_grad(classifier, False)
+    requires_grad(viscoin_gan.synthesis, False)  # Freeze the synthesis part of the GAN
+
+    # Move the models to the device
+    classifier = classifier.to(device)
+    concept_extractor = concept_extractor.to(device)
+    explainer = explainer.to(device)
+    viscoin_gan = viscoin_gan.to(device)
+    generator_gan = generator_gan.to(device)
+
+    # Make dataloaders iterable
+    train_loader_iter = loop_iter(train_loader)
+
+    # Define the optimizers
+    learning_rate = params.learning_rate
+    gan_optimizer = optim.Adam(viscoin_gan.mapping.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(
+        itertools.chain(concept_extractor.parameters(), explainer.parameters()), lr=learning_rate
+    )
+
+    ###########################################################################
+    #                               TRAINING LOOP                             #
+    ###########################################################################
+
+    for i in tqdm(range(params.iterations), "Training VisCoIN"):
+
+        # Put models in training mode
+        concept_extractor.train()
+        explainer.train()
+        viscoin_gan.train()
+
+        ###################################################
+        #            LEARNING RATE SCHEDULING             #
+        ###################################################
+
+        # Update the learning rate all 1000 iterations after the first half
+        if i > params.iterations // 2 and i % 1000 == 0:
+            learning_rate *= 0.8
+
+            update_lr(optimizer, learning_rate)
+            update_lr(gan_optimizer, learning_rate)
+
+        ###################################################
+        #                  SAMPLE INPUTS                  #
+        ###################################################
+
+        # Gather real image samples (1 batch worth) and mix them with GAN generated images
+        real_images, labels = next(train_loader_iter)
+        fake_images = synthetic_samples(generator_gan, len(real_images), device)
+        all_images = torch.cat([real_images, fake_images.cpu()]).to(device)
+
+        ###################################################
+        #                   FORWARD PASS                  #
+        ###################################################
+
+        # Forward pass of the VisCoIN ensemble
+        classes, hidden_states = classifier.forward(all_images)
+        encoded_concepts, extra_info = concept_extractor.forward(hidden_states[-3:])
+        explainer_classes = explainer.forward(encoded_concepts)
+
+        ###################################################
+        #                 LOSS COMPUTATION                #
+        ###################################################
+
+        acc_loss = F.cross_entropy(classes[: len(labels)], labels)
+
+        if i > params.cd_fid_iteration:
+            cr_loss = params.delta * concept_regularization_loss(encoded_concepts)
+            of_loss = params.alpha * output_fidelity_loss(classes, explainer_classes)
+        else:
+            cr_loss = torch.tensor(0.0).to(device)
+            of_loss = torch.tensor(0.0).to(device)
+
+        ortho_loss = concept_orthogonality_loss(concept_extractor)
+
+        # Reconstruction loss
+        rebuilt_images, gan_latents = viscoin_gan.forward(
+            z1=encoded_concepts, z2=extra_info, return_latents=True
+        )
+        rebuilt_classes, _ = classifier.forward(rebuilt_images)
+
+        rec_loss = reconstruction_loss(
+            rebuilt_images,
+            real_images,
+            rebuilt_classes,
+            classes[: len(labels)],
+            params.gamma,
+            params.beta,
+        )
+
+        gan_loss = gan_regularization_loss(gan_latents, viscoin_gan)
+
+        total_loss = acc_loss + cr_loss + of_loss + ortho_loss + rec_loss + gan_loss
+
+        ###################################################
+        #                 BACKPROPAGATION                 #
+        ###################################################
+
+        # Step the optimizers
+        optimizer.zero_grad()
+        gan_optimizer.zero_grad()
+
+        total_loss.backward()
+
+        optimizer.step()
+        gan_optimizer.step()
+
+        ###################################################
+        #                      TESTING                    #
+        ###################################################
+
+        # Every 200 iterations, test the models
+        if i % 2000 == 0:
+
+            # Compare classifier prediction on the original vs reconstructed images
+            inter_loss = cross_cross_entropy_loss(classes, rebuilt_classes)
+
+            logger.info(
+                f"Iteration {i} - Losses: acc = {acc_loss}, cr = {cr_loss}, of = {of_loss}, ortho = {ortho_loss}, rec = {rec_loss}, gan = {gan_loss}, inter = {inter_loss}"
+            )
+
+            test_results = test_viscoin(
+                classifier,
+                concept_extractor,
+                explainer,
+                viscoin_gan,
+                test_loader,
+                device,
+                compute_fid=True,
+                verbose=False,
+            )
+
+            logger.info(test_results)
+
+        # TODO: compute some other metrics (fonction ff_img())
+        # TODO: save a GAN sample every 2000 iterations ? (just to see the evolution)
+
+        # Every 20_000 iterations, save the model checkpoints
+        # NOTE: was 50_000 in the original code
+        if i % 20_000 == 0:
+            save_viscoin(
+                classifier,
+                concept_extractor,
+                explainer,
+                viscoin_gan,
+                f"viscoin{i//20_000}-{params.iterations//20_000}.pth",
+            )

@@ -38,12 +38,7 @@ def train_classifier_cub(
         epochs: the number of epochs to train the model
         learning_rate: the learning rate for the optimizer
     """
-    test_loss: list[float] = []
-    train_loss: list[float] = []
-    train_accuracy: list[float] = []
-    test_accuracy: list[float] = []
     best_accuracy = 0.0
-
     best_model = model.state_dict()
     logger = get_logger()
 
@@ -87,8 +82,6 @@ def train_classifier_cub(
         # Append training metrics
         accuracy = total_correct / total_samples
         batch_mean_loss = total_loss / len(train_loader)
-        train_loss.append(batch_mean_loss)
-        train_accuracy.append(accuracy)
         scheduler.step()
 
         ###########################################################################################
@@ -96,8 +89,6 @@ def train_classifier_cub(
         ###########################################################################################
 
         accuracy, mean_loss = test_classifier(model, test_loader, device, criterion, False)
-        test_loss.append(mean_loss)
-        test_accuracy.append(accuracy)
 
         if accuracy > best_accuracy:
             best_model = model.state_dict()

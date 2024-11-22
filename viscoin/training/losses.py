@@ -22,6 +22,13 @@ def entropy_loss(v: Tensor) -> Tensor:
     return -torch.sum(p * torch.log(p))
 
 
+def cross_cross_entropy_loss(original_prediction: Tensor, secondary_prediction: Tensor) -> Tensor:
+    """Compare 2 tensors of class predictions using cross entropy loss."""
+    p = F.softmax(secondary_prediction, dim=1)
+    t = F.softmax(original_prediction, dim=1)
+    return (p.log() * -t).sum(dim=1).mean()
+
+
 def l1_loss(x: Tensor) -> Tensor:
     """L1 loss function (difference between `x` and 0 with L1 norm)."""
     return F.l1_loss(x, torch.zeros(x.shape).to(x.device))
@@ -136,7 +143,8 @@ def reconstruction_loss(
     return (
         F.l1_loss(reconstructed, original)
         + F.mse_loss(reconstructed, original)
-        + lambda_classes * F.cross_entropy(reconstructed_classes, original_classes.detach())
+        + lambda_classes
+        * cross_cross_entropy_loss(reconstructed_classes, original_classes.detach())
         + lambda_lpips * lpips_loss(reconstructed, original)
     )
 
@@ -155,7 +163,7 @@ def output_fidelity_loss(original_classes: Tensor, explainer_classes: Tensor) ->
         explainer_classes: (batch_size, n_classes) Explainer classes unnormalized logits.
     """
 
-    return F.cross_entropy(explainer_classes, original_classes.detach())
+    return cross_cross_entropy_loss(explainer_classes, original_classes.detach())
 
 
 ###################################################################################################
