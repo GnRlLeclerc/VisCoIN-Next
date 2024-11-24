@@ -44,6 +44,7 @@ Structure of the `viscoin` folder.
 
 ## Quickstart
 
+If you are a nix user, skip the `conda` part and run `nix develop`.
 Create a conda environment for the project with these commands:
 
 ```bash
@@ -147,6 +148,7 @@ Hyperparameters used on different datasets for the training of the different Vis
 The GAN is pretrained. Model instance parameters:
 
 For the original stylegan which we have pretrained weights for:
+
 ```python
 generator = Generator(
     z_dim=512,
@@ -162,6 +164,7 @@ generator = Generator(
 ```
 
 For the adapted VisCoIN GAN:
+
 ```python
 generator = GeneratorAdapted(
     z_dim=256,  # concepts
@@ -185,5 +188,3 @@ For all datasets and all subnetworks:
 | Optimizer | Learning Rate | Epochs                         | Batch Size                        |
 | --------- | ------------- | ------------------------------ | --------------------------------- |
 | Adam      | 0.0001        | 100,000 (50,000 for CelebA-HQ) | 16 (8 original + 8 gan generated) |
-
-

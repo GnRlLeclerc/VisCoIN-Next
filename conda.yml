@@ -19,6 +19,7 @@ dependencies:
   - tqdm
   - numpy
   - lpips
+  - openai-clip
 
   # Utilities
   - click

@@ -17,7 +17,7 @@ N_CONCEPTS = 256
 DEVICE = "cuda"
 
 
-model = Classifier(resnet="50", output_classes=N_CLASSES, pretrained=True).to(DEVICE)
+model = Classifier(output_classes=N_CLASSES, pretrained=True).to(DEVICE)
 concept = ConceptExtractor(n_concepts=N_CONCEPTS).to(DEVICE)
 explainer = Explainer(n_concepts=N_CONCEPTS, n_classes=N_CLASSES, normalized=True).to(DEVICE)
 
