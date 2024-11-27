@@ -5,9 +5,12 @@ Training function for the whole viscoin model.
 import itertools
 from dataclasses import dataclass
 
+import numpy as np
+import numpy.random as rd
 import torch
 import torch.nn.functional as F
 from torch import optim
+from torch.types import Number
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -17,7 +20,7 @@ from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.models.explainers import Explainer
 from viscoin.models.gan import GeneratorAdapted
 from viscoin.models.utils import save_viscoin
-from viscoin.testing.viscoin import test_viscoin
+from viscoin.testing.viscoin import amplify_concepts, test_viscoin
 from viscoin.training.losses import (
     concept_orthogonality_loss,
     concept_regularization_loss,
@@ -89,9 +92,6 @@ def train_viscoin_cub(
         test_loader: The test dataloader.
         device: The device to use.
     """
-
-    best_accuracy = 0.0
-    # best_model = model.state_dict()
     logger = get_logger()
 
     # Model preparations
@@ -227,11 +227,7 @@ def train_viscoin_cub(
                 compute_fid=True,
                 verbose=False,
             )
-
             logger.info(test_results)
-
-        # TODO: compute some other metrics (fonction ff_img())
-        # TODO: save a GAN sample every 2000 iterations ? (just to see the evolution)
 
         # Every 20_000 iterations, save the model checkpoints
         # NOTE: was 50_000 in the original code
@@ -242,4 +238,27 @@ def train_viscoin_cub(
                 explainer,
                 viscoin_gan,
                 f"viscoin{i//20_000}-{params.iterations//20_000}.pth",
+            )
+
+        # Every 25_000 iterations, generate 200 amplified samples (~ faithfullness)
+        if i % 25000 == 0 and i > 0:
+            best_concept_proba: list[Number] = []
+
+            # Select 200 random images from the test set
+            for i in rd.choice(len(test_loader), 200, replace=False):
+
+                results = amplify_concepts(
+                    test_loader.dataset[i][0],
+                    classifier,
+                    concept_extractor,
+                    explainer,
+                    viscoin_gan,
+                    device,
+                )
+                # The element of index 1 corresponds to the rebuild image for x1 intensity
+                # this evaluates faithfullness
+                best_concept_proba.append(results.best_concept_probas_best[1])
+
+            logger.info(
+                f"Faithfullness stats (probability of best concept after reconstruction): mean = {np.mean(best_concept_proba)} --- std = {np.std(best_concept_proba)}"
             )

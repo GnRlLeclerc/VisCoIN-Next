@@ -6,9 +6,11 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+import numpy.random as rd
 import torch
 import torch.nn.functional as F
 from scipy.linalg import sqrtm
+from torch import Tensor, nn
 from torch.types import Number
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -160,5 +162,140 @@ def test_viscoin(
         s, _ = sqrtm(np.dot(sigma_fake, sigma_real), disp=False)
         fid = np.real(m + np.trace(sigma_fake + sigma_real - s * 2))
         results.fid_score = fid
+
+    return results
+
+
+@dataclass
+class AmplifiedConceptsResults:
+    """Amplified concepts results.
+
+    Args:
+        image: The image sample tensor that was amplified.
+        default_probas: (n_concepts,) The default class probabilities for all the concepts (computed on an image generated with zeroed inputs with the adaped gan)
+        multipliers: The multipliers used to amplify the concepts
+        best_concept_probas_best: Given the initial best concept for the image, contains the probabilities of said concept for all multipliers after targeted best concept amplification.
+        best_concept_probas_rand: Given the initial best concept for the image, contains the probabilities of said concept for all multipliers after random concept amplification.
+        amplified_images: (n_multipliers, 3, 256, 256) The amplified images for all multipliers
+    """
+
+    image: Tensor
+    default_probas: Tensor
+    multipliers: list[float]
+    best_concept_probas_best: list[Number]
+    best_concept_probas_rand: list[Number]
+    amplified_images: list[Tensor]
+
+
+def amplify_concepts(
+    image: Tensor,
+    classifier: Classifier,
+    concept_extractor: ConceptExtractor,
+    explainer: Explainer,
+    generator: GeneratorAdapted,
+    device: str,
+    threshold=0.2,
+) -> AmplifiedConceptsResults:
+    """
+    Amplify the best concepts of a given image sample, and compare the regenerated images.
+    The best concepts are chosen based on a threshold between [-1, 1] on normalised max concept activations.
+
+    Args:
+        image: The image sample tensor to amplify.
+        classifier: The classifier model.
+        concept_extractor: The concept extractor model.
+        explainer: The explainer model.
+        generator: The VisCoIN GAN model.
+        device: The device to use.
+        threshold: [-1, 1] - The threshold to select the best concepts.
+
+    Returns: AmplifiedConceptsResults, a dataclass containing the results.
+    """
+    # Put the models in evaluation mode
+    classifier = classifier.eval()
+    concept_extractor = concept_extractor.eval()
+    explainer = explainer.eval()
+    generator = generator.eval()
+
+    multipliers = [0.0, 1.0, 2.0, 4.0]
+    results = AmplifiedConceptsResults(
+        image=image.clone(),
+        default_probas=torch.tensor([]),
+        multipliers=multipliers,
+        best_concept_probas_best=[],
+        best_concept_probas_rand=[],
+        amplified_images=[],
+    )
+
+    # Unsqueeze a batch dimension if needed
+    if len(image.shape) == 3:
+        image = image.unsqueeze(0)
+    image = image.to(device)
+
+    synth_kwargs = {"noise_mode": "const"}
+    expl_weights = explainer.linear.weight  # (n_classes, n_concepts)
+
+    # Forward pass through the models
+    with torch.no_grad():
+        _, classifier_latents = classifier.forward(image)
+        concept_embeddings, extra_info = concept_extractor.forward(classifier_latents[-3:])
+        expl_logits = explainer.forward(concept_embeddings)  # output shape: (1, n_classes)
+    expl_class_probas = F.softmax(expl_logits, dim=1)  # (1, n_classes)
+    class_pred = expl_class_probas.argmax(dim=1)  # (1) - predicted best class for this image
+    concept_pred = expl_logits.argmax(dim=1)  # (1) - predicted best concept for this image
+
+    # Compute the concept intensities (for each concept, max of the 3x3 embedding map, and then normalize by the max)
+    # (n_concepts)
+    concept_pooling = F.adaptive_max_pool2d(concept_embeddings.squeeze(0), 1).squeeze()
+    concept_intensities = concept_pooling * expl_weights[class_pred].squeeze()  # ( n_concepts)
+    concept_intensities /= concept_intensities.abs().max()  # (n_concepts) in [-1, 1]
+
+    # Get the concept index whose intensity is above the threshold
+    # (n_best_concepts) in [0, n_concepts[
+    best_concepts = torch.where(concept_intensities > threshold)[0]
+    # Choose as many random concepts (will serve as a baseline)
+    rand_concepts = rd.choice(len(concept_intensities), len(best_concepts), replace=False)
+
+    # Concept intensity multipliers
+    for multiplier in multipliers:
+        # concept embeddings (batch_size, n_concepts, 3, 3)
+        embeddings_best = concept_embeddings.clone()
+        embeddings_rand = concept_embeddings.clone()
+
+        # Multiply the selected concept embeddings by the multiplier
+        for attr in best_concepts:
+            embeddings_best[0, attr] *= multiplier
+        for attr in rand_concepts:
+            embeddings_rand[0, attr] *= multiplier
+
+        # Generate the images with the modified embeddings
+        with torch.no_grad():
+            new_image_best = generator(z1=embeddings_best, z2=extra_info, **synth_kwargs)
+            new_image_rand = generator(z1=embeddings_rand, z2=extra_info, **synth_kwargs)
+        results.amplified_images.append(new_image_best)
+
+        # Do a full forward pass for the generated images
+        with torch.no_grad():
+            _, latent_best = classifier.forward(new_image_best)
+            _, latent_rand = classifier.forward(new_image_rand)
+            concepts_best, _ = concept_extractor.forward(latent_best[-3:])
+            concepts_rand, _ = concept_extractor.forward(latent_rand[-3:])
+            classes_best = explainer.forward(concepts_best)
+            classes_rand = explainer.forward(concepts_rand)
+        probas_best = F.softmax(classes_best, dim=1)
+        probas_rand = F.softmax(classes_rand, dim=1)
+
+        # Accumulate the statistics for all multipliers
+        results.best_concept_probas_best.append(probas_best[0, concept_pred].item())
+        results.best_concept_probas_rand.append(probas_rand[0, concept_pred].item())
+
+    # Generate and analyze the "default" image (all embeddings to 0)
+    default_z1 = torch.zeros_like(concept_embeddings)
+    default_z2 = torch.zeros_like(extra_info)
+    default_img = generator(z1=default_z1, z2=default_z2, **synth_kwargs)
+    _, default_latents = classifier.forward(default_img)
+    default_concepts, _ = concept_extractor.forward(default_latents[-3:])
+    default_classes = explainer.forward(default_concepts)
+    results.default_probas = F.softmax(default_classes, dim=1).squeeze(0)
 
     return results

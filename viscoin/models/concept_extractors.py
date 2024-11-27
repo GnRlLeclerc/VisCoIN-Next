@@ -90,7 +90,7 @@ class ConceptExtractor(nn.Module):
         # Define activation and pooling layers
         self.activ = nn.ReLU()
 
-    def forward(self, latent_layers: tuple[Tensor, Tensor, Tensor]):
+    def forward(self, latent_layers: tuple[Tensor, Tensor, Tensor]) -> tuple[Tensor, Tensor]:
         """Computes concept embeddings from the 3 latent layers of a classifier.
 
         Args:
