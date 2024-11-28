@@ -14,9 +14,13 @@ import torch
 from torch.utils.data import DataLoader
 
 from viscoin.datasets.cub import CUB_200_2011
+from viscoin.models import explainers
 from viscoin.models.classifiers import Classifier
+from viscoin.models.concept_extractors import ConceptExtractor
+from viscoin.models.utils import load_viscoin
 from viscoin.testing.classifiers import test_classifier
 from viscoin.training.classifiers import train_classifier_cub
+from viscoin.training.viscoin import TrainingParameters, train_viscoin_cub
 from viscoin.utils.logging import configure_score_logging
 
 
@@ -40,9 +44,7 @@ def common_params(func):
         required=True,
         type=str,
     )(func)
-    click.option(
-        "--classifier-checkpoints", help="The path to load the classifier checkpoints", type=str
-    )(func)
+    click.option("--checkpoints", help="The path to load the checkpoints", type=str)(func)
 
     return func
 
@@ -64,7 +66,6 @@ def common_params(func):
 @click.option(
     "--output-weights",
     help="The path/filename where to save the weights",
-    required=True,
     type=str,
 )
 def train(
@@ -72,10 +73,10 @@ def train(
     batch_size: int,
     device: str,
     dataset_path: str,
-    classifier_checkpoints: str | None,
+    checkpoints: str | None,
     epochs: int,
     learning_rate: float,
-    output_weights: str,
+    output_weights: str = "output-weights.pt",
 ):
     """Train a model on a dataset.
 
@@ -86,33 +87,64 @@ def train(
     test_dataset = CUB_200_2011(dataset_path, mode="test")
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-    pretrained = classifier_checkpoints is None
+    pretrained = checkpoints is not None
 
     match model_name:
-        case "resnet18":
-            model = Classifier(resnet="18", output_classes=200, pretrained=pretrained).to(device)
-        case "resnet50":
-            model = Classifier(resnet="50", output_classes=200, pretrained=pretrained).to(device)
+        case "classifier":
+            model = Classifier(output_classes=200, pretrained=pretrained).to(device)
+
+            if pretrained:
+                model.load_state_dict(torch.load(checkpoints, weights_only=True))
+
+            model = model.to(device)
+
+            configure_score_logging(f"{model_name}_{epochs}.log")
+            train_classifier_cub(
+                model,
+                train_loader,
+                test_loader,
+                device,
+                epochs,
+                learning_rate,
+            )
+
+            weights = model.state_dict()
+            torch.save(weights, output_weights)
+
+        case "viscoin":
+            pass
+            classifier = torch.load("checkpoints/cub/classifier-cub.pkl", weights_only=False).to(
+                device
+            )
+            concept_extractor = ConceptExtractor().to(device)
+            explainer = explainers.Explainer().to(device)
+            viscoin_gan = torch.load("checkpoints/cub/gan-adapted-cub.pkl", weights_only=False).to(
+                device
+            )
+            generator_gan = torch.load("checkpoints/cub/gan-cub.pkl", weights_only=False).to(device)
+
+            if pretrained:
+                load_viscoin(classifier, concept_extractor, explainer, viscoin_gan, checkpoints)
+
+            configure_score_logging(f"{model_name}_{epochs}.log")
+
+            params = TrainingParameters()  # Using the default parameters for training on CUB
+
+            # The training saves the viscoin model regularly
+            train_viscoin_cub(
+                classifier,
+                concept_extractor,
+                explainer,
+                viscoin_gan,
+                generator_gan,
+                train_loader,
+                test_loader,
+                params,
+                device,
+            )
+
         case _:
             raise ValueError(f"Unknown model name: {model_name}")
-
-    if not pretrained:
-        model.load_state_dict(torch.load(classifier_checkpoints, weights_only=True))
-
-    model = model.to(device)
-
-    configure_score_logging(f"{model_name}_{epochs}.log")
-    train_classifier_cub(
-        model,
-        train_loader,
-        test_loader,
-        device,
-        epochs,
-        learning_rate,
-    )
-
-    weights = model.state_dict()
-    torch.save(weights, output_weights)
 
 
 @main.command()
@@ -122,24 +154,22 @@ def test(
     batch_size: int,
     device: str,
     dataset_path: str,
-    classifier_checkpoints: str | None,
+    checkpoints: str | None,
 ):
     """Test a model on a dataset"""
 
     dataset = CUB_200_2011(dataset_path, mode="test")
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-    pretrained = classifier_checkpoints is None
+    pretrained = checkpoints is not None
 
     match model_name:
-        case "resnet18":
-            model = Classifier(resnet="18", output_classes=200, pretrained=pretrained).to(device)
-        case "resnet50":
-            model = Classifier(resnet="50", output_classes=200, pretrained=pretrained).to(device)
+        case "classifier":
+            model = Classifier(output_classes=200, pretrained=pretrained).to(device)
         case _:
             raise ValueError(f"Unknown model name: {model_name}")
 
-    if not pretrained:
-        model.load_state_dict(torch.load(classifier_checkpoints, weights_only=True))
+    if pretrained:
+        model.load_state_dict(torch.load(checkpoints, weights_only=True))
 
     # TODO : if viscoin, specific stuff has to be done to ensure the model parameters are compatible
 

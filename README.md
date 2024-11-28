@@ -35,11 +35,14 @@ Structure of the `viscoin` folder.
 │   └── gan                 # StyleGAN implementation (modified stylegan2_ada)
 │
 ├── testing        # Testing functions
-│   └── classifiers         # Testing function for the classifier
+│   ├── classifiers         # Testing function for the classifier
+│   └── viscoin             # Testing functions for the viscoin ensemble
 │
 └── training       # Training functions
     ├── classifiers         # Training function for the classifier
-    └── losses              # Loss functions
+    ├── losses              # Loss functions
+    ├── utils               # Training utilities
+    └── viscoin             # Training function for the viscoin ensemble
 ```
 
 ## Quickstart
@@ -88,7 +91,7 @@ srun --gpus=1 --partition=P100 --pty bash  # Open a shell on a GPU node
 srun --gpus=1 --partition=P100 nvidia-smi  # Display the GPU capabilities of a node
 
 # Run a full job interactively
-srun --gpus=1 --partition=P100 --time=00:10:00 --nodes=1 --gpus=1 python main.py test resnet50 --dataset-path datasets/CUB_200_2011/ --batch-size 512
+srun --gpus=1 --partition=P100 --time=00:10:00 --nodes=1 --gpus=1 python main.py test classifier --dataset-path datasets/CUB_200_2011/ --batch-size 512
 ```
 
 ### Background
@@ -112,7 +115,7 @@ Example script:
 # The maximum running time of the job in days-hours:mins:sec (here: 1h)
 #SBATCH --time=0-01:00:00
 
-srun python main.py test resnet50 --dataset-path datasets/CUB_200_2011/ --batch-size 512
+srun python main.py test classifier --dataset-path datasets/CUB_200_2011/ --batch-size 512
 ```
 
 You then have to run the script (and interact with it) using these commands:
