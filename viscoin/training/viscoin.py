@@ -144,8 +144,9 @@ def train_viscoin_cub(
 
         # Gather real image samples (1 batch worth) and mix them with GAN generated images
         real_images, labels = next(train_loader_iter)
+        real_images, labels = real_images.to(device), labels.to(device)
         fake_images = synthetic_samples(generator_gan, len(real_images), device)
-        all_images = torch.cat([real_images, fake_images.cpu()]).to(device)
+        all_images = torch.cat([real_images, fake_images]).to(device)
 
         ###################################################
         #                   FORWARD PASS                  #
