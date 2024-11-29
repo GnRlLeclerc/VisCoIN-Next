@@ -67,6 +67,13 @@ def common_params(func):
     "--output-weights",
     help="The path/filename where to save the weights",
     type=str,
+    default="output-weights.pt",
+)
+@click.option(
+    "--gradient-accumulation-steps",
+    help="The amount of steps to accumulate gradients before stepping the optimizers",
+    type=int,
+    default=1,
 )
 def train(
     model_name: str,
@@ -76,7 +83,8 @@ def train(
     checkpoints: str | None,
     epochs: int,
     learning_rate: float,
-    output_weights: str = "output-weights.pt",
+    output_weights: str,
+    gradient_accumulation_steps: int,
 ):
     """Train a model on a dataset.
 
@@ -85,6 +93,7 @@ def train(
     """
     train_dataset = CUB_200_2011(dataset_path, mode="train")
     test_dataset = CUB_200_2011(dataset_path, mode="test")
+    batch_size = batch_size // gradient_accumulation_steps
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     pretrained = checkpoints is not None
@@ -112,7 +121,6 @@ def train(
             torch.save(weights, output_weights)
 
         case "viscoin":
-            pass
             classifier = torch.load("checkpoints/cub/classifier-cub.pkl", weights_only=False).to(
                 device
             )
@@ -128,7 +136,9 @@ def train(
 
             configure_score_logging(f"{model_name}_{epochs}.log")
 
-            params = TrainingParameters()  # Using the default parameters for training on CUB
+            # Using the default parameters for training on CUB
+            params = TrainingParameters()
+            params.gradient_accumulation = gradient_accumulation_steps
 
             # The training saves the viscoin model regularly
             train_viscoin_cub(

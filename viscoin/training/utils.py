@@ -47,3 +47,23 @@ def loop_iter(loader: Iterable[T]) -> Iterator[T]:
     while True:
         for batch in loader:
             yield batch
+
+
+class Accumulator:
+    """Gradient accumulation scheduler"""
+
+    def __init__(self, delay_epochs: int) -> None:
+        """Create a new gradient accumulation scheduler.
+        Upon stepping, it will return `true` every `delay_epochs` epochs."""
+
+        self.delay_epochs = delay_epochs
+        self.accumulation_steps = 0
+
+    def step(self) -> bool:
+        """Step the scheduler and return `true` if the accumulation should be done."""
+        self.accumulation_steps += 1
+
+        if self.accumulation_steps >= self.delay_epochs:
+            self.accumulation_steps = 0
+            return True
+        return False

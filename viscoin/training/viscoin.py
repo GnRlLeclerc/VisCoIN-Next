@@ -30,6 +30,7 @@ from viscoin.training.losses import (
     reconstruction_loss,
 )
 from viscoin.training.utils import (
+    Accumulator,
     loop_iter,
     requires_grad,
     synthetic_samples,
@@ -51,6 +52,7 @@ class TrainingParameters:
         beta: The LPIPS loss coefficient.
         gamma: The reconstruction classification loss coefficient.
         delta: The sparsity loss coefficient.
+        gradient_accumulation: The number of steps to accumulate gradients for.
     """
 
     # Generic params
@@ -63,6 +65,9 @@ class TrainingParameters:
     beta = 3.0  # LPIPS loss
     gamma = 0.1  # Reconstruction classification loss
     delta = 0.2  # Sparsity loss
+
+    # Gradient accumulation
+    gradient_accumulation = 1  # Step value of 1: no accumulation
 
 
 def train_viscoin_cub(
@@ -115,6 +120,7 @@ def train_viscoin_cub(
     optimizer = optim.Adam(
         itertools.chain(concept_extractor.parameters(), explainer.parameters()), lr=learning_rate
     )
+    accumulator = Accumulator(params.gradient_accumulation)
 
     ###########################################################################
     #                               TRAINING LOOP                             #
@@ -180,7 +186,7 @@ def train_viscoin_cub(
 
         rec_loss = reconstruction_loss(
             rebuilt_images,
-            real_images,
+            all_images,
             rebuilt_classes,
             classes[: len(labels)],
             params.gamma,
@@ -195,14 +201,15 @@ def train_viscoin_cub(
         #                 BACKPROPAGATION                 #
         ###################################################
 
-        # Step the optimizers
-        optimizer.zero_grad()
-        gan_optimizer.zero_grad()
-
         total_loss.backward()
 
-        optimizer.step()
-        gan_optimizer.step()
+        # Step the optimizers
+        if accumulator.step():
+            optimizer.step()
+            gan_optimizer.step()
+
+            optimizer.zero_grad()
+            gan_optimizer.zero_grad()
 
         ###################################################
         #                      TESTING                    #
