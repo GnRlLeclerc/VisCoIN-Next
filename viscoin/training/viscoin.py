@@ -188,7 +188,7 @@ def train_viscoin_cub(
             rebuilt_images,
             all_images,
             rebuilt_classes,
-            classes[: len(labels)],
+            classes,
             params.gamma,
             params.beta,
         )
@@ -215,7 +215,7 @@ def train_viscoin_cub(
         #                      TESTING                    #
         ###################################################
 
-        # Every 200 iterations, test the models
+        # Every 2000 iterations, test the models
         if i % 2000 == 0:
 
             # Compare classifier prediction on the original vs reconstructed images
