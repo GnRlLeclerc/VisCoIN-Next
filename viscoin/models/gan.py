@@ -30,11 +30,11 @@ class GeneratorAdapted(torch.nn.Module):
 
     def __init__(
         self,
-        z_dim,  # Input latent (Z) dimensionality. for z1, z2
-        c_dim,  # Conditioning label (C) dimensionality.
-        w_dim,  # Intermediate latent (W) dimensionality.
-        img_resolution,  # Output resolution.
-        img_channels,  # Number of output color channels.
+        z_dim=256,  # Input latent (Z) dimensionality. for z1, z2
+        c_dim=0,  # Conditioning label (C) dimensionality.
+        w_dim=512,  # Intermediate latent (W) dimensionality.
+        img_resolution=256,  # Output resolution.
+        img_channels=3,  # Number of output color channels.
         small_adjust=False,  # Small adjustment for a specific baseline model
         low_res256=False,  # Output resolution fixed to 256
         mapping_kwargs={},  # Arguments for MappingNetwork.

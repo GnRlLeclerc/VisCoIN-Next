@@ -10,15 +10,18 @@ Will be subject to many changes as the project evolves.
 """
 
 import click
+import numpy.random as rd
 import torch
+from torch import Tensor
 from torch.utils.data import DataLoader
 
 from viscoin.datasets.cub import CUB_200_2011
 from viscoin.models import explainers
 from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
-from viscoin.models.utils import load_viscoin
+from viscoin.models.utils import load_viscoin, load_viscoin_pickle
 from viscoin.testing.classifiers import test_classifier
+from viscoin.testing.viscoin import amplify_concepts, plot_amplified_images_batch
 from viscoin.training.classifiers import train_classifier_cub
 from viscoin.training.viscoin import TrainingParameters, train_viscoin_cub
 from viscoin.utils.logging import configure_score_logging
@@ -189,6 +192,62 @@ def test(
 
     click.echo(f"Accuracy: {100*accuracy:.2f}%")
     click.echo(f"Loss: {loss}")
+
+
+@main.command()
+@click.option(
+    "--dataset-path",
+    help="The path to the dataset to use for training/testing",
+    required=True,
+    type=str,
+)
+@click.option(
+    "--viscoin-pickle-path",
+    help="The path to the viscoin pickle file",
+    required=True,
+    type=str,
+)
+@click.option(
+    "--n-samples",
+    help="The number of random images to amplify",
+    type=int,
+    default=5,
+)
+@click.option(
+    "--device",
+    help="The device to use for training/testing",
+    type=str,
+    default="cuda",
+)
+def amplify(
+    dataset_path: str,
+    viscoin_pickle_path: str,
+    n_samples: int,
+    device: str,
+):
+    """Amplify the concepts of random images from a dataset (showcase)"""
+    # Load dataset and models
+    models = load_viscoin_pickle(viscoin_pickle_path)
+    dataset = CUB_200_2011(dataset_path, mode="test")
+
+    # Move models to device
+    classifier = models.classifier.to(device)
+    concept_extractor = models.concept_extractor.to(device)
+    explainer = models.explainer.to(device)
+    gan = models.gan.to(device)
+
+    # Choose random images to amplify
+    indices = rd.choice(len(dataset), n_samples, replace=False)
+    originals = [dataset[i][0].to(device) for i in indices]
+    amplified: list[list[Tensor]] = []
+    multipliers: list[float] = []
+
+    for image in originals:
+        results = amplify_concepts(image, classifier, concept_extractor, explainer, gan, device)
+        amplified.append(results.amplified_images)
+        multipliers = results.multipliers
+
+    plot_amplified_images_batch(originals, amplified, multipliers)
 
 
 if __name__ == "__main__":

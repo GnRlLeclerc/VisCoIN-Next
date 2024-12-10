@@ -76,6 +76,15 @@ Last, the example script:
 python example.py
 ```
 
+## Amplifying concepts
+
+To quickly run concept amplification, you can run the following command:
+Be sure to have downloaded the dataset, and to have checkpoints for the viscoin ensemble.
+
+```bash
+python main.py amplify --dataset-path datasets/CUB_200_2011/ --viscoin-pickle-path checkpoints/cub/viscoin-cub.pkl
+```
+
 ## Running jobs with SLURM
 
 There are 2 ways to run jobs on a server that allocates GPUs using SLURM.

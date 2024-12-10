@@ -4,6 +4,7 @@
 
 from dataclasses import dataclass
 
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.random as rd
 import torch
@@ -15,6 +16,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from viscoin.models.gan import GeneratorAdapted, fix_path
+from viscoin.utils.images import from_torch
 from viscoin.utils.types import TestingResults
 
 fix_path()
@@ -271,3 +273,50 @@ def amplify_concepts(
     results.default_probas = F.softmax(default_classes, dim=1).squeeze(0)
 
     return results
+
+
+def plot_amplified_images(original: Tensor, images: list[Tensor], multipliers: list[float]):
+    """Plot amplified images in a row, with their corresponding multiplier in the title"""
+
+    np_images = [from_torch(image) for image in images]
+    np_original = from_torch(original)
+
+    fig, axs = plt.subplots(1, len(multipliers) + 1, figsize=(15, 5))
+    fig.suptitle("Amplification of best concepts for an image")
+
+    axs[0].imshow(np_original)
+    axs[0].set_title("Original")
+    axs[0].axis("off")
+
+    for i, (image, multiplier) in enumerate(zip(np_images, multipliers)):
+        axs[i + 1].imshow(image)
+        axs[i + 1].set_title(f"Multiplier: {multiplier:.2f}")
+        axs[i + 1].axis("off")
+
+    plt.show()
+
+
+def plot_amplified_images_batch(
+    originals: list[Tensor], images: list[list[Tensor]], multipliers: list[float]
+):
+    """Plot amplified images in a row, with their corresponding multiplier in the title.
+    This function can plot multiple rows."""
+
+    np_images = [[from_torch(image) for image in images[i]] for i in range(len(images))]
+    np_original = [from_torch(original) for original in originals]
+
+    fig, axs = plt.subplots(len(images), len(multipliers) + 1, figsize=(15, 5 * len(images)))
+    fig.suptitle("Amplification of best concepts for an image")
+
+    for i, (original, row_images) in enumerate(zip(np_original, np_images)):
+        axs[i, 0].imshow(original)
+        axs[i, 0].set_title("Original")
+        axs[i, 0].axis("off")
+
+        for j, (image, multiplier) in enumerate(zip(row_images, multipliers)):
+            axs[i, j + 1].imshow(image)
+            if i == 0:  # Only display the header multiplier for the first row
+                axs[i, j + 1].set_title(f"Multiplier: {multiplier:.2f}")
+            axs[i, j + 1].axis("off")
+
+    plt.show()
