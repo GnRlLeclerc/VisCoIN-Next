@@ -3,60 +3,32 @@
 # pyright: reportPossiblyUnboundVariable=false
 
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 import numpy.random as rd
 import torch
 import torch.nn.functional as F
 from scipy.linalg import sqrtm
-from torch import Tensor, nn
+from torch import Tensor
 from torch.types import Number
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+
+from viscoin.models.gan import GeneratorAdapted, fix_path
+from viscoin.utils.types import TestingResults
+
+fix_path()
 
 from stylegan2_ada.dnnlib.util import open_url
 from stylegan2_ada.metrics.metric_utils import FeatureStats
 from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.models.explainers import Explainer
-from viscoin.models.gan import GeneratorAdapted
 from viscoin.training.losses import (
     concept_regularization_loss,
     lpips_loss,
     output_fidelity_loss,
 )
-
-Float = np.floating[Any]
-
-
-@dataclass
-class TestingResults:
-    """VisCoIN testing results.
-
-    Args:
-        acc_loss: The accuracy loss.
-        cr_loss: The concept regularization loss.
-        of_loss: The output fidelity loss.
-        lp_loss: The LPIPS loss.
-        rec_loss_l1: The L1 reconstruction loss.
-        rec_loss_l2: The L2 reconstruction loss.
-        preds_overlap: The overlap between the classifier and explainer predictions as a percentage.
-        correct_preds: The percentage of correct classifier predictions.
-        correct_expl_preds: The percentage of correct explainer predictions.
-        fid_score: The Fréchet Inception Distance score if computed.
-    """
-
-    acc_loss: Float
-    cr_loss: Float
-    of_loss: Float
-    lp_loss: Float
-    rec_loss_l1: Float
-    rec_loss_l2: Float
-    preds_overlap: Float
-    correct_preds: Float
-    correct_expl_preds: Float
-    fid_score: Float | None = None
 
 
 def test_viscoin(

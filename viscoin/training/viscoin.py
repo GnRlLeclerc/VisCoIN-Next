@@ -14,11 +14,14 @@ from torch.types import Number
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from viscoin.models.gan import GeneratorAdapted, fix_path
+
+fix_path()
+
 from stylegan2_ada.training.networks import Generator
 from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.models.explainers import Explainer
-from viscoin.models.gan import GeneratorAdapted
 from viscoin.models.utils import save_viscoin
 from viscoin.testing.viscoin import amplify_concepts, test_viscoin
 from viscoin.training.losses import (

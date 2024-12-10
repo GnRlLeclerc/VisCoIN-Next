@@ -7,8 +7,15 @@ import sys
 import torch
 from torchvision import transforms
 
+
 # Add stylegan2_ada submodule to the python path so that imports within this submodule work properly
+def fix_path():
+    pass  # Pass because the following line will be executed.
+    # Use this function as a way to prevent isort from placing the stylegan import before this import
+
+
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "stylegan2_ada"))
+
 
 from stylegan2_ada.torch_utils import misc
 from stylegan2_ada.training.networks import (
