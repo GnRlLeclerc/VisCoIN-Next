@@ -21,7 +21,12 @@ from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.models.utils import load_viscoin, load_viscoin_pickle
 from viscoin.testing.classifiers import test_classifier
-from viscoin.testing.viscoin import amplify_concepts, plot_amplified_images_batch
+from viscoin.testing.viscoin import (
+    ThresholdSelection,
+    TopKSelection,
+    amplify_concepts,
+    plot_amplified_images_batch,
+)
 from viscoin.training.classifiers import train_classifier_cub
 from viscoin.training.viscoin import TrainingParameters, train_viscoin_cub
 from viscoin.utils.logging import configure_score_logging
@@ -214,6 +219,16 @@ def test(
     default=5,
 )
 @click.option(
+    "--concept-threshold",
+    help="Use a concept activation threshold to select the concepts to amplify. In [-1, 1], prefer 0.2 as a default. Exclusive with concept-top-k",
+    type=float,
+)
+@click.option(
+    "--concept-top-k",
+    help="The amount of most activated concepts to amplify. Exclusive with concept-threshold",
+    type=int,
+)
+@click.option(
     "--device",
     help="The device to use for training/testing",
     type=str,
@@ -223,6 +238,8 @@ def amplify(
     dataset_path: str,
     viscoin_pickle_path: str,
     n_samples: int,
+    concept_threshold: float | None,
+    concept_top_k: int | None,
     device: str,
 ):
     """Amplify the concepts of random images from a dataset (showcase)"""
@@ -242,8 +259,29 @@ def amplify(
     amplified: list[list[Tensor]] = []
     multipliers: list[float] = []
 
+    if concept_threshold is not None:
+        concept_selection: ThresholdSelection | TopKSelection = {
+            "method": "threshold",
+            "threshold": concept_threshold,
+        }
+    elif concept_top_k is not None:
+        concept_selection: ThresholdSelection | TopKSelection = {
+            "method": "top_k",
+            "k": concept_top_k,
+        }
+    else:
+        raise ValueError("You must provide either concept-threshold or concept-top-k")
+
     for image in originals:
-        results = amplify_concepts(image, classifier, concept_extractor, explainer, gan, device)
+        results = amplify_concepts(
+            image,
+            classifier,
+            concept_extractor,
+            explainer,
+            gan,
+            concept_selection,
+            device,
+        )
         amplified.append(results.amplified_images)
         multipliers = results.multipliers
 

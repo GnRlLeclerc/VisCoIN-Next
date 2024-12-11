@@ -81,8 +81,16 @@ python example.py
 To quickly run concept amplification, you can run the following command:
 Be sure to have downloaded the dataset, and to have checkpoints for the viscoin ensemble.
 
+Amplifying concepts whose activation is over a threshold:
+
 ```bash
-python main.py amplify --dataset-path datasets/CUB_200_2011/ --viscoin-pickle-path checkpoints/cub/viscoin-cub.pkl
+python main.py amplify --dataset-path datasets/CUB_200_2011/ --viscoin-pickle-path checkpoints/cub/viscoin-cub.pkl --concept-threshold 0.2
+```
+
+Amplifying the top k concepts for each image:
+
+```bash
+python main.py amplify --dataset-path datasets/CUB_200_2011/ --viscoin-pickle-path checkpoints/cub/viscoin-cub.pkl --concept-top-k 5
 ```
 
 ## Running jobs with SLURM

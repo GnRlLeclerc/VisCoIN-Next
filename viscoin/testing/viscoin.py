@@ -3,6 +3,7 @@
 # pyright: reportPossiblyUnboundVariable=false
 
 from dataclasses import dataclass
+from typing import Literal, TypedDict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -161,14 +162,28 @@ class AmplifiedConceptsResults:
     amplified_images: list[Tensor]
 
 
+class ThresholdSelection(TypedDict):
+    """Select all concepts above a threshold"""
+
+    method: Literal["threshold"]
+    threshold: float  # Default: 0.2
+
+
+class TopKSelection(TypedDict):
+    """Select the top k concepts (use k=1 to amplify only the best concept)"""
+
+    method: Literal["top_k"]
+    k: int  # Default: 3
+
+
 def amplify_concepts(
     image: Tensor,
     classifier: Classifier,
     concept_extractor: ConceptExtractor,
     explainer: Explainer,
     generator: GeneratorAdapted,
+    concept_selection: ThresholdSelection | TopKSelection,
     device: str,
-    threshold=0.2,
 ) -> AmplifiedConceptsResults:
     """
     Amplify the best concepts of a given image sample, and compare the regenerated images.
@@ -226,7 +241,11 @@ def amplify_concepts(
 
     # Get the concept index whose intensity is above the threshold
     # (n_best_concepts) in [0, n_concepts[
-    best_concepts = torch.where(concept_intensities > threshold)[0]
+    if concept_selection["method"] == "threshold":
+        best_concepts = torch.where(concept_intensities > concept_selection["threshold"])[0]
+    elif concept_selection["method"] == "top_k":
+        best_concepts = torch.topk(concept_intensities, k=concept_selection["k"]).indices
+
     # Choose as many random concepts (will serve as a baseline)
     rand_concepts = rd.choice(len(concept_intensities), len(best_concepts), replace=False)
 
