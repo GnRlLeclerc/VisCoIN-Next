@@ -264,6 +264,7 @@ def train_viscoin_cub(
                     concept_extractor,
                     explainer,
                     viscoin_gan,
+                    {"method": "threshold", "threshold": 0.2},
                     device,
                 )
                 # The element of index 1 corresponds to the rebuild image for x1 intensity
