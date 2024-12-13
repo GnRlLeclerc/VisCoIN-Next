@@ -76,4 +76,4 @@ def load_viscoin_pickle(
     path: str,
 ) -> VisCoINModels:
     """Jointly load the VisCoIN models from a pickle file."""
-    return torch.load(path)
+    return torch.load(path, weights_only=False)
