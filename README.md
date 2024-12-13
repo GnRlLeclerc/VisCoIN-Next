@@ -93,6 +93,16 @@ Amplifying the top k concepts for each image:
 python main.py amplify --dataset-path datasets/CUB_200_2011/ --viscoin-pickle-path checkpoints/cub/viscoin-cub.pkl --concept-top-k 5
 ```
 
+## Testing concept repartition and correlation
+
+You can, for a trained viscoin ensemble, compute the concept correlations and activations, plot them and save them to a pickle file.
+
+```bash
+python main.py concepts --dataset-path datasets/CUB_200_2011/ --viscoin-pickle-path checkpoints/cub/viscoin-cub.pkl
+```
+
+This will create the `concept_results.pkl` file, of type unpickled type `viscoin.testing.concepts.ConceptTestResults`.
+
 ## Running jobs with SLURM
 
 There are 2 ways to run jobs on a server that allocates GPUs using SLURM.

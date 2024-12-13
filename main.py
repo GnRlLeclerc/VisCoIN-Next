@@ -9,7 +9,10 @@ python main.py test resnet50 --batch-size 32 --dataset-path datasets/CUB_200_201
 Will be subject to many changes as the project evolves.
 """
 
+import pickle
+
 import click
+import matplotlib.pyplot as plt
 import numpy.random as rd
 import torch
 from torch import Tensor
@@ -21,6 +24,7 @@ from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.models.utils import load_viscoin, load_viscoin_pickle
 from viscoin.testing.classifiers import test_classifier
+from viscoin.testing.concepts import test_concepts
 from viscoin.testing.viscoin import (
     ThresholdSelection,
     TopKSelection,
@@ -286,6 +290,71 @@ def amplify(
         multipliers = results.multipliers
 
     plot_amplified_images_batch(originals, amplified, multipliers)
+
+
+@main.command()
+@click.option(
+    "--dataset-path",
+    help="The path to the dataset to use for training/testing",
+    required=True,
+    type=str,
+)
+@click.option(
+    "--viscoin-pickle-path",
+    help="The path to the viscoin pickle file",
+    required=True,
+    type=str,
+)
+@click.option(
+    "--batch-size", default=16, help="The batch size to use for training/testing", type=int
+)
+@click.option(
+    "--device",
+    help="The device to use for training/testing",
+    type=str,
+    default="cuda",
+)
+def concepts(
+    dataset_path: str,
+    viscoin_pickle_path: str,
+    batch_size: int,
+    device: str,
+):
+    dataset = CUB_200_2011(dataset_path, mode="test")
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+
+    viscoin = load_viscoin_pickle(viscoin_pickle_path)
+
+    classifier = viscoin.classifier.to(device)
+    concept_extractor = viscoin.concept_extractor.to(device)
+    explainer = viscoin.explainer.to(device)
+
+    results = test_concepts(classifier, concept_extractor, explainer, dataloader, device)
+
+    print(f"Classifier accuracy: {results.classifier_accuracy}")
+    print(f"Explainer accuracy: {results.explainer_accuracy}")
+
+    # Pickle the results for later use
+    pickle.dump(results, open("concept_results.pkl", "wb"))
+
+    # Plot the results
+    plt.plot(results.concept_activation_per_image)
+    plt.title("Concept activation per image")
+    plt.grid()
+    plt.xlabel("Concept")
+    plt.ylabel("Activation intensity")
+    plt.show()
+
+    plt.plot(results.concept_activation_per_concept)
+    plt.title("Concept activation per concept over the whole dataset")
+    plt.grid()
+    plt.xlabel("Concept")
+    plt.ylabel("Activation intensity")
+    plt.show()
+
+    plt.imshow(results.concept_correlations, cmap="hot")
+    plt.title("Concept correlations")
+    plt.show()
 
 
 if __name__ == "__main__":

@@ -22,6 +22,7 @@ class ConceptTestResults:
         explainer_accuracy: The accuracy of the explainer model.
         concept_activation_per_image: (n_concepts) The sorted curve of average concept activation per image (see how many concepts are used per image).
         concept_activation_per_concept: (n_concepts) The sorted average activation of each concept per image (see dead concepts).
+        raw_concept_mean_activation (n_concepts) The mean activation of each concept over the whole dataset, in the order of concept_correlations.
         concept_correlations: (n_concepts) The correlation of each concept with each other.
     """
 
@@ -29,6 +30,7 @@ class ConceptTestResults:
     explainer_accuracy: float
     concept_activation_per_image: np.ndarray
     concept_activation_per_concept: np.ndarray
+    raw_concept_mean_activation: np.ndarray
     concept_correlations: np.ndarray
 
 
@@ -98,9 +100,6 @@ def test_concepts(
             concept_activation_per_concept += activations
             concept_correlations += np.outer(activations, activations)
 
-    # Sort concept activations per concept for a readable curve
-    concept_activation_per_concept.sort()
-
     # Divide everything by the amount of images in the dataset
     n_images = len(dataloader.dataset)  # type: ignore
 
@@ -108,6 +107,7 @@ def test_concepts(
         classifier_accuracy=float(np.mean(classifier_accuracies)),
         explainer_accuracy=float(np.mean(explainer_accuracies)),
         concept_activation_per_image=concept_activation_per_image / n_images,
-        concept_activation_per_concept=concept_activation_per_concept / n_images,
+        concept_activation_per_concept=np.sort(concept_activation_per_concept / n_images),
+        raw_concept_mean_activation=concept_activation_per_concept / n_images,
         concept_correlations=concept_correlations / n_images,
     )
