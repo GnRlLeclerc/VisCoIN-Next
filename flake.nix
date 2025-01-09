@@ -20,14 +20,14 @@
         "x86_64-darwin"
       ];
 
-      # Add the lpips package + override torch to use the bin version
+      # Add the lpips package
       overlays = [
         (final: prev: {
           python312 = prev.python312.override {
             packageOverrides = finalPy: prevPy: {
               lpips = final.python312.pkgs.buildPythonPackage rec {
                 pname = "lpips";
-                version = "0.1.4";
+                version = "v0.1.4";
 
                 src = final.pkgs.fetchFromGitHub {
                   owner = "richzhang";
@@ -47,23 +47,6 @@
                   ipykernel
                 ];
               };
-
-              # Temporary fix for python312Packages.triton-bin
-              # Follow this issue https://github.com/NixOS/nixpkgs/issues/351717
-              triton-bin = prevPy.triton-bin.overridePythonAttrs (oldAttrs: {
-                postFixup = ''
-                  chmod +x "$out/${prev.python312.sitePackages}/triton/backends/nvidia/bin/ptxas"
-                  substituteInPlace $out/${prev.python312.sitePackages}/triton/backends/nvidia/driver.py \
-                    --replace \
-                      'return [libdevice_dir, *libcuda_dirs()]' \
-                      'return [libdevice_dir, "${prev.addDriverRunpath.driverLink}/lib", "${prev.cudaPackages.cuda_cudart}/lib/stubs/"]'
-                '';
-              });
-
-              # Replace main torch packages with their bin versions for CUDA support + caching
-              torch = finalPy.torch-bin;
-              torchvision = finalPy.torchvision-bin;
-              torchaudio = finalPy.torchaudio-bin;
             };
           };
 
@@ -80,7 +63,10 @@
         let
           pkgs = import nixpkgs {
             inherit system overlays;
-            config.allowUnfree = true;
+            config = {
+              allowUnfree = true;
+              cudaSupport = true;
+            };
           };
         in
         pkgs.mkShell {
@@ -105,8 +91,8 @@
             (python312.withPackages (
               ps: with ps; [
                 # Deep learning libraries
-                torch-bin
-                torchvision-bin
+                torch
+                torchvision
                 transformers
                 pillow
                 tqdm
