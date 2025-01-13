@@ -28,6 +28,7 @@ class ConceptTestResults:
         concept_correlations: (n_concepts, n_concepts) The correlation of each concept with each other. Normalized.
         class_concept_correlations: (n_classes, n_concepts) The correlation of each concept with each class. Normalized per class, so that each row (class) represents the relative activation of every concept for this class.
         concept_class_correlations: (n_concepts, n_classes) The correlation of each class with each concept. Normalized per concept, so that each row (concept) represents the relative activation of this concept for every class.
+        concept_entropy: (n_concepts) The entropy of each concept activation, normalized over the concepts.
         class_counts: (n_classes) The number of images per class in the dataset.
     """
 
@@ -39,6 +40,7 @@ class ConceptTestResults:
     concept_correlations: np.ndarray
     class_concept_correlations: np.ndarray
     concept_class_correlations: np.ndarray
+    concept_entropy: np.ndarray
     class_counts: np.ndarray
 
 
@@ -116,7 +118,16 @@ def test_concepts(
             class_concept_correlations[label] += activations
             class_counts[label] += 1
 
-    class_factors = class_counts / class_counts.max()
+    # (n_classes, n_concepts)
+    balanced_class_concept_correlations = (
+        class_concept_correlations / class_counts[:, None] * class_counts.max()
+    )
+
+    # Now, before normalizing, compute the entropy of each concept
+    entropies = -np.sum(
+        balanced_class_concept_correlations * np.log(balanced_class_concept_correlations + 1e-6),
+        axis=0,
+    )
 
     # Normalize by sum to obtain probabilities
     return ConceptTestResults(
@@ -129,8 +140,7 @@ def test_concepts(
         # Normalize concept activation per class (insensitive to class imbalance)
         class_concept_correlations=normalize(class_concept_correlations, axis=1),
         # Normalize concept activation per concept (sensitive to class imbalance, hence the use of class counts)
-        concept_class_correlations=normalize(
-            class_concept_correlations / class_factors[:, None], axis=0
-        ).T,
+        concept_class_correlations=normalize(balanced_class_concept_correlations, axis=0).T,
         class_counts=class_counts,
+        concept_entropy=normalize(entropies),
     )

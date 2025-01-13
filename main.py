@@ -14,6 +14,7 @@ import pickle
 
 import click
 import matplotlib.pyplot as plt
+import numpy as np
 import numpy.random as rd
 import torch
 from torch import Tensor
@@ -33,6 +34,7 @@ from viscoin.testing.viscoin import (
     plot_amplified_images_batch,
 )
 from viscoin.training.classifiers import train_classifier_cub
+from viscoin.training.losses import entropy_loss
 from viscoin.training.viscoin import TrainingParameters, train_viscoin_cub
 from viscoin.utils.logging import configure_score_logging
 
@@ -396,6 +398,23 @@ def concepts(
     plt.title("Sorted importance of classes for each concept")
     plt.xlabel("Concept")
     plt.ylabel("Class")
+    plt.show()
+
+    # Compute concept entropy among classes
+    # concepts with high entropy are balanced among classes, and do not separate them well
+
+    # Plot sorted concept entropies to showcase the distribution of class-separating concepts
+    plt.plot(
+        results.concept_entropy[results.raw_concept_mean_activation.argsort()][::-1],
+        label="Concept entropy by average activation",
+    )
+    sorted_concept_entropies = np.sort(results.concept_entropy)
+    plt.plot(sorted_concept_entropies, label="Sorted concept entropies")
+    plt.grid()
+    plt.title("Concept entropy among classes (higher means less class-separating)")
+    plt.xlabel("Concept")
+    plt.ylabel("Entropy")
+    plt.legend()
     plt.show()
 
 
