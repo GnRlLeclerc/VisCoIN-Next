@@ -26,7 +26,9 @@ class ConceptTestResults:
         concept_activation_per_concept: (n_concepts) The sorted average activation of each concept per image (see dead concepts).
         raw_concept_mean_activation (n_concepts) The mean activation of each concept over the whole dataset, in the order of concept_correlations.
         concept_correlations: (n_concepts, n_concepts) The correlation of each concept with each other. Normalized.
-        class_concept_correlations: (n_classes, n_concepts) The correlation of each concept with each class. Normalized per concept, so that each row (class) represents the relative activation of every concept for this class.
+        class_concept_correlations: (n_classes, n_concepts) The correlation of each concept with each class. Normalized per class, so that each row (class) represents the relative activation of every concept for this class.
+        concept_class_correlations: (n_concepts, n_classes) The correlation of each class with each concept. Normalized per concept, so that each row (concept) represents the relative activation of this concept for every class.
+        class_counts: (n_classes) The number of images per class in the dataset.
     """
 
     classifier_accuracy: float
@@ -36,6 +38,8 @@ class ConceptTestResults:
     raw_concept_mean_activation: np.ndarray
     concept_correlations: np.ndarray
     class_concept_correlations: np.ndarray
+    concept_class_correlations: np.ndarray
+    class_counts: np.ndarray
 
 
 def test_concepts(
@@ -76,6 +80,8 @@ def test_concepts(
     concept_correlations = np.zeros((n_concepts, n_concepts))
     # Correlated activation of concepts for each class
     class_concept_correlations = np.zeros((n_classes, n_concepts))
+    # Class counts in the dataset
+    class_counts = np.zeros(n_classes)
 
     # Compare accuracies
     classifier_accuracies: list[float] = []
@@ -102,11 +108,15 @@ def test_concepts(
         for image_concepts, label in zip(encoded_concepts, labels):
             # (n_concepts)
             activations = F.adaptive_max_pool2d(image_concepts, 1).squeeze().cpu().numpy()
+            label = label.cpu().item()
 
             concept_activation_per_image += np.sort(activations)
             concept_activation_per_concept += activations
             concept_correlations += np.outer(activations, activations)
-            class_concept_correlations[label.cpu().item()] += activations
+            class_concept_correlations[label] += activations
+            class_counts[label] += 1
+
+    class_factors = class_counts / class_counts.max()
 
     # Normalize by sum to obtain probabilities
     return ConceptTestResults(
@@ -116,5 +126,11 @@ def test_concepts(
         concept_activation_per_concept=np.sort(normalize(concept_activation_per_concept)),
         raw_concept_mean_activation=normalize(concept_activation_per_concept),
         concept_correlations=normalize(concept_correlations),
-        class_concept_correlations=normalize(class_concept_correlations, axis=0),
+        # Normalize concept activation per class (insensitive to class imbalance)
+        class_concept_correlations=normalize(class_concept_correlations, axis=1),
+        # Normalize concept activation per concept (sensitive to class imbalance, hence the use of class counts)
+        concept_class_correlations=normalize(
+            class_concept_correlations / class_factors[:, None], axis=0
+        ).T,
+        class_counts=class_counts,
     )

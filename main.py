@@ -367,6 +367,37 @@ def concepts(
     plt.grid()
     plt.show()
 
+    # Concept indexes in increasing order of activation
+    # concept_by_activation = results.raw_concept_mean_activation.argsort()
+    concept_by_activation = results.class_concept_correlations.mean(axis=0).argsort()
+    classes_by_activation = results.class_concept_correlations.mean(
+        axis=1
+    ).argsort()  # (cls, cpt) -> (cls)
+
+    # Heatmap of the class-concept correlations
+    plt.imshow(
+        results.class_concept_correlations[:, concept_by_activation][classes_by_activation, :]
+    )
+    plt.title("Sorted importance of concepts for each class")
+    plt.xlabel("Concept")
+    plt.ylabel("Class")
+    plt.show()
+
+    # Now the same, concepts still sorted like this ? the only imbalance we have left is classes
+    classes_by_activation = results.concept_class_correlations.mean(
+        axis=0
+    ).argsort()  # (cpt, cls) -> (cls)
+    concept_by_activation = results.concept_class_correlations.mean(axis=1).argsort()
+
+    # Heatmap of the class-concept correlations
+    plt.imshow(
+        results.concept_class_correlations[concept_by_activation, :][:, classes_by_activation].T
+    )
+    plt.title("Sorted importance of classes for each concept")
+    plt.xlabel("Concept")
+    plt.ylabel("Class")
+    plt.show()
+
 
 if __name__ == "__main__":
     main()
