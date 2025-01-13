@@ -123,9 +123,15 @@ def test_concepts(
         class_concept_correlations / class_counts[:, None] * class_counts.max()
     )
 
+    # Compute per-concept probabilities for each class using softmax before computing entropy
+    # in order to normalize the concept activation per class
+    class_probability_per_concept = F.softmax(
+        torch.tensor(balanced_class_concept_correlations), dim=0
+    ).numpy()
+
     # Now, before normalizing, compute the entropy of each concept
     entropies = -np.sum(
-        balanced_class_concept_correlations * np.log(balanced_class_concept_correlations + 1e-6),
+        class_probability_per_concept * np.log(class_probability_per_concept + 1e-6),
         axis=0,
     )
 
