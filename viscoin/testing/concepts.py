@@ -11,11 +11,13 @@ from tqdm import tqdm
 from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.models.explainers import Explainer
+from viscoin.utils.maths import normalize
 
 
 @dataclass
 class ConceptTestResults:
     """Results of the concept test
+    Every result is normalized between 0 and 1.
 
     Args:
         classifier_accuracy: The accuracy of the classifier model.
@@ -23,7 +25,8 @@ class ConceptTestResults:
         concept_activation_per_image: (n_concepts) The sorted curve of average concept activation per image (see how many concepts are used per image).
         concept_activation_per_concept: (n_concepts) The sorted average activation of each concept per image (see dead concepts).
         raw_concept_mean_activation (n_concepts) The mean activation of each concept over the whole dataset, in the order of concept_correlations.
-        concept_correlations: (n_concepts) The correlation of each concept with each other.
+        concept_correlations: (n_concepts, n_concepts) The correlation of each concept with each other. Normalized.
+        class_concept_correlations: (n_classes, n_concepts) The correlation of each concept with each class. Normalized per concept, so that each row (class) represents the relative activation of every concept for this class.
     """
 
     classifier_accuracy: float
@@ -32,6 +35,7 @@ class ConceptTestResults:
     concept_activation_per_concept: np.ndarray
     raw_concept_mean_activation: np.ndarray
     concept_correlations: np.ndarray
+    class_concept_correlations: np.ndarray
 
 
 def test_concepts(
@@ -62,6 +66,7 @@ def test_concepts(
     explainer.eval()
 
     n_concepts = concept_extractor.n_concepts
+    n_classes = classifier.linear.weight.shape[0]
 
     # For each image, add the sorted probabilities of the concept to have an idea of how many concepts are activated at once
     concept_activation_per_image = np.zeros(n_concepts)
@@ -69,6 +74,8 @@ def test_concepts(
     concept_activation_per_concept = np.zeros(n_concepts)
     # Correlated activation of concepts in a heatmap
     concept_correlations = np.zeros((n_concepts, n_concepts))
+    # Correlated activation of concepts for each class
+    class_concept_correlations = np.zeros((n_classes, n_concepts))
 
     # Compare accuracies
     classifier_accuracies: list[float] = []
@@ -92,22 +99,22 @@ def test_concepts(
         explainer_accuracies.append(explainer_accuracy)
 
         # Compute concept activations and correlations
-        for image_concepts in encoded_concepts:
+        for image_concepts, label in zip(encoded_concepts, labels):
             # (n_concepts)
             activations = F.adaptive_max_pool2d(image_concepts, 1).squeeze().cpu().numpy()
 
             concept_activation_per_image += np.sort(activations)
             concept_activation_per_concept += activations
             concept_correlations += np.outer(activations, activations)
+            class_concept_correlations[label.cpu().item()] += activations
 
-    # Divide everything by the amount of images in the dataset
-    n_images = len(dataloader.dataset)  # type: ignore
-
+    # Normalize by sum to obtain probabilities
     return ConceptTestResults(
         classifier_accuracy=float(np.mean(classifier_accuracies)),
         explainer_accuracy=float(np.mean(explainer_accuracies)),
-        concept_activation_per_image=concept_activation_per_image / n_images,
-        concept_activation_per_concept=np.sort(concept_activation_per_concept / n_images),
-        raw_concept_mean_activation=concept_activation_per_concept / n_images,
-        concept_correlations=concept_correlations / n_images,
+        concept_activation_per_image=normalize(concept_activation_per_image),
+        concept_activation_per_concept=np.sort(normalize(concept_activation_per_concept)),
+        raw_concept_mean_activation=normalize(concept_activation_per_concept),
+        concept_correlations=normalize(concept_correlations),
+        class_concept_correlations=normalize(class_concept_correlations, axis=0),
     )

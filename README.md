@@ -95,7 +95,7 @@ python main.py amplify --dataset-path datasets/CUB_200_2011/ --viscoin-pickle-pa
 
 ## Testing concept repartition and correlation
 
-You can, for a trained viscoin ensemble, compute the concept correlations and activations, plot them and save them to a pickle file.
+You can, for a trained viscoin ensemble, compute the concept correlations and activations, plot them and save them to a pickle file. Use `--force` to ignore cached results.
 
 ```bash
 python main.py concepts --dataset-path datasets/CUB_200_2011/ --viscoin-pickle-path checkpoints/cub/viscoin-cub.pkl

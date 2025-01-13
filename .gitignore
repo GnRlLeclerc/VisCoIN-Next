@@ -15,3 +15,6 @@ __pycache__/
 
 # Direnv
 /.direnv
+
+# Image outputs
+*.png

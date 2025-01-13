@@ -9,6 +9,7 @@ python main.py test resnet50 --batch-size 32 --dataset-path datasets/CUB_200_201
 Will be subject to many changes as the project evolves.
 """
 
+import os
 import pickle
 
 import click
@@ -309,6 +310,11 @@ def amplify(
     "--batch-size", default=16, help="The batch size to use for training/testing", type=int
 )
 @click.option(
+    "--force",
+    help="Recompute the concept through the dataset, even if cached",
+    is_flag=True,
+)
+@click.option(
     "--device",
     help="The device to use for training/testing",
     type=str,
@@ -318,42 +324,47 @@ def concepts(
     dataset_path: str,
     viscoin_pickle_path: str,
     batch_size: int,
+    force: bool,
     device: str,
 ):
-    dataset = CUB_200_2011(dataset_path, mode="test")
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    """Analyse the distribution of concepts across the test dataset, and how well they separate classes."""
 
-    viscoin = load_viscoin_pickle(viscoin_pickle_path)
+    if force or not os.path.isfile("concept_results.pkl"):
+        # Recompute the concept results
 
-    classifier = viscoin.classifier.to(device)
-    concept_extractor = viscoin.concept_extractor.to(device)
-    explainer = viscoin.explainer.to(device)
+        dataset = CUB_200_2011(dataset_path, mode="test")
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    results = test_concepts(classifier, concept_extractor, explainer, dataloader, device)
+        viscoin = load_viscoin_pickle(viscoin_pickle_path)
 
-    print(f"Classifier accuracy: {results.classifier_accuracy}")
-    print(f"Explainer accuracy: {results.explainer_accuracy}")
+        classifier = viscoin.classifier.to(device)
+        concept_extractor = viscoin.concept_extractor.to(device)
+        explainer = viscoin.explainer.to(device)
 
-    # Pickle the results for later use
-    pickle.dump(results, open("concept_results.pkl", "wb"))
+        results = test_concepts(classifier, concept_extractor, explainer, dataloader, device)
 
-    # Plot the results
-    plt.plot(results.concept_activation_per_image)
-    plt.title("Concept activation per image")
-    plt.grid()
-    plt.xlabel("Concept")
-    plt.ylabel("Activation intensity")
-    plt.show()
+        # Pickle the results for later use
+        pickle.dump(results, open("concept_results.pkl", "wb"))
 
+    else:
+        results = pickle.load(open("concept_results.pkl", "rb"))
+
+    print(f"Classifier accuracy: {results.classifier_accuracy*100:2f}%")
+    print(f"Explainer accuracy: {results.explainer_accuracy*100:2f}%")
+
+    # Display the results in a nice way
     plt.plot(results.concept_activation_per_concept)
-    plt.title("Concept activation per concept over the whole dataset")
-    plt.grid()
+    plt.title("Concept activation per concept over the test dataset")
     plt.xlabel("Concept")
-    plt.ylabel("Activation intensity")
+    plt.ylabel("Activation (% of total activation)")
+    plt.grid()
     plt.show()
 
-    plt.imshow(results.concept_correlations, cmap="hot")
-    plt.title("Concept correlations")
+    plt.plot(results.concept_activation_per_image)
+    plt.title("Concept activation per image over the test dataset")
+    plt.xlabel("Concept")
+    plt.ylabel("Activation (% of total activation)")
+    plt.grid()
     plt.show()
 
 
