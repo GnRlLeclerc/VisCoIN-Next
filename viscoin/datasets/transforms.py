@@ -3,7 +3,8 @@
 Taken from the Pytorch Resnet page: https://pytorch.org/hub/pytorch_vision_resnet/
 """
 
-from torchvision import transforms
+import torch
+from torchvision.transforms import v2 as transforms
 
 """
 - RandomResizedCrop: focus on random aspects of the image
@@ -12,9 +13,10 @@ from torchvision import transforms
 """
 RESNET_TRAIN_TRANSFORM = transforms.Compose(
     [
-        transforms.RandomResizedCrop(256 / 0.875),
+        transforms.RandomResizedCrop(256),
         transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
+        transforms.ToImage(),
+        transforms.ToDtype(torch.float32, scale=True),
         transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
     ]
 )
@@ -28,7 +30,8 @@ RESNET_TEST_TRANSFORM = transforms.Compose(
     [
         transforms.Resize(int(256 / 0.875)),
         transforms.CenterCrop(256),
-        transforms.ToTensor(),
+        transforms.ToImage(),
+        transforms.ToDtype(torch.float32, scale=True),
         transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
     ]
 )

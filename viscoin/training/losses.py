@@ -93,7 +93,7 @@ def concept_orthogonality_loss(model: ConceptExtractor) -> Tensor:
     concept_weights = model.conv5.weight.view(model.n_concepts, -1)
     normed_weights = F.normalize(concept_weights, dim=1).abs()
 
-    return (normed_weights @ normed_weights.T - model.n_concepts).sum() / (model.n_concepts**2)
+    return ((normed_weights @ normed_weights.T).sum() - model.n_concepts) / (model.n_concepts**2)
 
 
 ###################################################################################################

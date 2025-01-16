@@ -48,10 +48,16 @@ def common_params(func):
     """Add common parameters to the cli command"""
     click.argument("model_name")(func)
     click.option(
-        "--batch-size", default=32, help="The batch size to use for training/testing", type=int
+        "--batch-size",
+        default=32,
+        help="The batch size to use for training/testing",
+        type=int,
     )(func)
     click.option(
-        "--device", default="cuda", help="The device to use for training/testing", type=str
+        "--device",
+        default="cuda",
+        help="The device to use for training/testing",
+        type=str,
     )(func)
     click.option(
         "--dataset-path",
@@ -309,7 +315,10 @@ def amplify(
     type=str,
 )
 @click.option(
-    "--batch-size", default=16, help="The batch size to use for training/testing", type=int
+    "--batch-size",
+    default=16,
+    help="The batch size to use for training/testing",
+    type=int,
 )
 @click.option(
     "--force",

@@ -40,7 +40,7 @@
                   torch
                   torchvision
                   numpy
-                  opencv4
+                  (opencv4.override { enableCuda = false; })
                   scikit-image
                   matplotlib
                   tqdm

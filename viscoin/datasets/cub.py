@@ -15,7 +15,7 @@ import torch
 from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
-from torchvision.transforms import Compose
+from torchvision.transforms.v2 import Compose
 
 from viscoin.datasets.transforms import RESNET_TEST_TRANSFORM, RESNET_TRAIN_TRANSFORM
 from viscoin.utils.types import Mode
@@ -100,9 +100,6 @@ class CUB_200_2011(Dataset):
 
         # Apply the transformations
         tensor_image = self.transform(image)
-
-        if type(tensor_image) is not Tensor:
-            raise ValueError("The transform must return a tensor.")
 
         return tensor_image
 
