@@ -22,10 +22,10 @@ def entropy_loss(v: Tensor) -> Tensor:
     return -torch.sum(p * torch.log(p))
 
 
-def cross_cross_entropy_loss(original_prediction: Tensor, secondary_prediction: Tensor) -> Tensor:
+def cross_cross_entropy_loss(prediction: Tensor, target_prediction: Tensor) -> Tensor:
     """Compare 2 tensors of class predictions using cross entropy loss."""
-    p = F.softmax(secondary_prediction, dim=1)
-    t = F.softmax(original_prediction, dim=1)
+    p = F.softmax(prediction, dim=1)
+    t = F.softmax(target_prediction, dim=1)
     return (p.log() * -t).sum(dim=1).mean()
 
 

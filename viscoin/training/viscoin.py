@@ -223,7 +223,7 @@ def train_viscoin_cub(
         if i % 2000 == 0:
 
             # Compare classifier prediction on the original vs reconstructed images
-            inter_loss = cross_cross_entropy_loss(classes, rebuilt_classes)
+            inter_loss = cross_cross_entropy_loss(rebuilt_classes, classes)
             results = TrainingResults(
                 acc_loss.item(),
                 cr_loss.item(),
