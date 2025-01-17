@@ -9,6 +9,7 @@ __pycache__/
 /checkpoints
 *.pt
 *.pkl
+*.pth
 
 # Logs
 *.log
