@@ -15,6 +15,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from viscoin.models.gan import GeneratorAdapted, fix_path
+from viscoin.utils.types import TrainingResults
 
 fix_path()
 
@@ -223,10 +224,17 @@ def train_viscoin_cub(
 
             # Compare classifier prediction on the original vs reconstructed images
             inter_loss = cross_cross_entropy_loss(classes, rebuilt_classes)
-
-            logger.info(
-                f"Iteration {i} - Losses: acc = {acc_loss}, cr = {cr_loss}, of = {of_loss}, ortho = {ortho_loss}, rec = {rec_loss}, gan = {gan_loss}, inter = {inter_loss}"
+            results = TrainingResults(
+                acc_loss.item(),
+                cr_loss.item(),
+                of_loss.item(),
+                ortho_loss.item(),
+                rec_loss.item(),
+                gan_loss.item(),
+                inter_loss.item(),
             )
+
+            logger.info(results)
 
             test_results = test_viscoin(
                 classifier,

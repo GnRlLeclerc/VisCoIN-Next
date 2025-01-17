@@ -37,6 +37,7 @@ from viscoin.training.classifiers import train_classifier_cub
 from viscoin.training.losses import entropy_loss
 from viscoin.training.viscoin import TrainingParameters, train_viscoin_cub
 from viscoin.utils.logging import configure_score_logging
+from viscoin.utils.types import TestingResults, TrainingResults
 
 
 @click.group()
@@ -425,6 +426,36 @@ def concepts(
     plt.ylabel("Entropy")
     plt.legend()
     plt.show()
+
+
+@click.option(
+    "--logs-path",
+    help="The path to the logs file",
+    required=True,
+    type=str,
+)
+def logs(path: str):
+    """Parse a viscoin training log file and plot the losses and metrics"""
+
+    training_results: list[TrainingResults] = []
+    testing_results: list[TestingResults] = []
+
+    # Read the log file
+    with open(path, "r") as f:
+        for line in f:
+            if line.startswith("TestingResults"):
+                testing_results.append(eval(line))
+            elif line.startswith("TrainingResults"):
+                training_results.append(eval(line))
+            else:
+                continue
+
+    # Plot the losses
+    TrainingResults.plot_losses(training_results)
+    TestingResults.plot_losses(testing_results)
+
+    # Plot the metrics
+    TestingResults.plot_preds_overlap(testing_results)
 
 
 if __name__ == "__main__":
