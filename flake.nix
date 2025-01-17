@@ -87,6 +87,7 @@
             # Build system for loading C++ extensions in torch
             ninja
             cudatoolkit
+            gcc13 # Version <=13 required for nvcc
 
             (python312.withPackages (
               ps: with ps; [
