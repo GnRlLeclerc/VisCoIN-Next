@@ -24,6 +24,12 @@ from stylegan2_ada.training.networks import (
     normalize_2nd_moment,
 )
 
+_default_viscoin_mapping_kwargs = {
+    "coarse_layer": 2,
+    "mid_layer": 10,
+    "num_layers": 1,
+}
+
 
 class GeneratorAdapted(torch.nn.Module):
     """StyleGAN adapted for VisCoIN"""
@@ -37,10 +43,13 @@ class GeneratorAdapted(torch.nn.Module):
         img_channels=3,  # Number of output color channels.
         small_adjust=False,  # Small adjustment for a specific baseline model
         low_res256=False,  # Output resolution fixed to 256
-        mapping_kwargs={},  # Arguments for MappingNetwork.
+        mapping_kwargs=None,  # Arguments for MappingNetwork.
         synthesis_kwargs={},  # Arguments for SynthesisNetwork.
     ):
         super().__init__()
+        if mapping_kwargs is None:
+            mapping_kwargs = _default_viscoin_mapping_kwargs
+
         self.z_dim = z_dim
         self.c_dim = c_dim
         self.w_dim = w_dim
