@@ -34,7 +34,6 @@ from viscoin.testing.viscoin import (
     plot_amplified_images_batch,
 )
 from viscoin.training.classifiers import train_classifier_cub
-from viscoin.training.losses import entropy_loss
 from viscoin.training.viscoin import TrainingParameters, train_viscoin_cub
 from viscoin.utils.logging import configure_score_logging
 from viscoin.utils.types import TestingResults, TrainingResults
@@ -428,20 +427,21 @@ def concepts(
     plt.show()
 
 
+@main.command()
 @click.option(
     "--logs-path",
     help="The path to the logs file",
     required=True,
     type=str,
 )
-def logs(path: str):
+def logs(logs_path: str):
     """Parse a viscoin training log file and plot the losses and metrics"""
 
     training_results: list[TrainingResults] = []
     testing_results: list[TestingResults] = []
 
     # Read the log file
-    with open(path, "r") as f:
+    with open(logs_path, "r") as f:
         for line in f:
             if line.startswith("TestingResults"):
                 testing_results.append(eval(line))
