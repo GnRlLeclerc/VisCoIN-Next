@@ -21,10 +21,11 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 
 from viscoin.datasets.cub import CUB_200_2011
-from viscoin.models import explainers
 from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
-from viscoin.models.utils import load_viscoin, load_viscoin_pickle
+from viscoin.models.explainers import Explainer
+from viscoin.models.gan import GeneratorAdapted
+from viscoin.models.utils import load_viscoin, load_viscoin_pickle, save_viscoin_pickle
 from viscoin.testing.classifiers import test_classifier
 from viscoin.testing.concepts import test_concepts
 from viscoin.testing.viscoin import (
@@ -146,7 +147,7 @@ def train(
                 device
             )
             concept_extractor = ConceptExtractor().to(device)
-            explainer = explainers.Explainer().to(device)
+            explainer = Explainer().to(device)
             viscoin_gan = torch.load("checkpoints/cub/gan-adapted-cub.pkl", weights_only=False).to(
                 device
             )
@@ -456,6 +457,22 @@ def logs(logs_path: str):
 
     # Plot the metrics
     TestingResults.plot_preds_overlap(testing_results)
+
+
+@main.command()
+@click.option("--checkpoints", help="The path to load the checkpoints", type=str)
+@click.option("--output", help="The path to generate the pickle to", type=str)
+def to_pickle(checkpoints: str, output: str):
+    """Convert safetensors to a pickled viscoin model using default parameters"""
+
+    classifier = Classifier()
+    concept_extractor = ConceptExtractor()
+    explainer = Explainer()
+    gan = GeneratorAdapted()
+
+    load_viscoin(classifier, concept_extractor, explainer, gan, checkpoints)
+
+    save_viscoin_pickle(classifier, concept_extractor, explainer, gan, output)
 
 
 if __name__ == "__main__":

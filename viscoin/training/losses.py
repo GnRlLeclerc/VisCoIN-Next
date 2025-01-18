@@ -101,7 +101,15 @@ def concept_orthogonality_loss(model: ConceptExtractor) -> Tensor:
 ###################################################################################################
 
 # Cache the LPIPS network to avoid loading it every time
-_lpips_network = lpips.LPIPS(net="vgg")
+_lpips_network: None | lpips.LPIPS = None
+
+
+def _get_lpips_network() -> lpips.LPIPS:
+    """Get the LPIPS network, and lazy load it."""
+    global _lpips_network
+    if _lpips_network is None:
+        _lpips_network = lpips.LPIPS(net="vgg")
+    return _lpips_network
 
 
 def lpips_loss(reconstructed: Tensor, original: Tensor) -> Tensor:
@@ -111,7 +119,7 @@ def lpips_loss(reconstructed: Tensor, original: Tensor) -> Tensor:
         reconstructed: (batch_size, 3, H, W) Reconstructed images.
         original: (batch_size, 3, H, W) Original images.
     """
-    return torch.mean(_lpips_network.to(reconstructed.device)(reconstructed, original))
+    return torch.mean(_get_lpips_network().to(reconstructed.device)(reconstructed, original))
 
 
 def reconstruction_loss(
