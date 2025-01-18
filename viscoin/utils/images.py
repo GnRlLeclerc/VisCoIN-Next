@@ -15,8 +15,25 @@ def clip_tensor_image(x: Tensor) -> Tensor:
     match x.dtype:
         case torch.float:
             return clamp(x, 0, 1)
-        case torch.int:
+        case torch.int | torch.uint8:
             return clamp(x, 0, 255)
+        case _:
+            raise ValueError(f"Unsupported tensor type {x.dtype}")
+
+
+def normalize_tensor_image(x: Tensor) -> Tensor:
+    """Normalize a tensor / batched tensor's values for image display depending on the type.
+    - int: [0, 255] -> [0, 1]
+    - float: [0, 1]
+    """
+    min = x.min()
+    max = x.max()
+
+    match x.dtype:
+        case torch.float:
+            return (x - min) / (max - min)
+        case torch.int | torch.uint8:
+            return ((x.float() - min) / (max - min) * 255).to(torch.uint8)
         case _:
             raise ValueError(f"Unsupported tensor type {x.dtype}")
 
@@ -26,7 +43,7 @@ def from_torch(x: Tensor) -> np.ndarray:
     Accepts a batched or unbatched single image."""
 
     dim = len(x.shape)
-    x = clip_tensor_image(x)
+    x = normalize_tensor_image(x)
 
     if dim == 3:
         return x.permute(1, 2, 0).detach().cpu().numpy()

@@ -38,6 +38,9 @@ class GradCAM:
         # Normalize to [0, 1]
         batchwise_max = heatmaps.max(axis=(1, 2))[:, None, None]
         batchwise_min = heatmaps.min(axis=(1, 2))[:, None, None]
-        heatmaps = (heatmaps - batchwise_min) / (batchwise_max - batchwise_min)
+
+        divider = batchwise_max - batchwise_min
+        divider[divider == 0] = 1  # Avoid division by zero
+        heatmaps = (heatmaps - batchwise_min) / divider
 
         return heatmaps

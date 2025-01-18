@@ -85,8 +85,6 @@ class Classifier(nn.Module):
         The input must be an image tensor with the following shape:
         (batch_size, num_channels, height, width)
         - num_channels = 3
-        - height = 224
-        - width = 224
 
         Args:
             x: the input image tensor
