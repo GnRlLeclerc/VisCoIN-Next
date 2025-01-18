@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch.nn import functional as F
@@ -42,6 +43,72 @@ class ConceptTestResults:
     concept_class_correlations: np.ndarray
     concept_entropy: np.ndarray
     class_counts: np.ndarray
+
+    def print_accuracies(self):
+        print(f"Classifier accuracy: {self.classifier_accuracy*100:2f}%")
+        print(f"Explainer accuracy: {self.explainer_accuracy*100:2f}%")
+
+    def plot_concept_activation_per_concept(self):
+        plt.plot(self.concept_activation_per_concept)
+        plt.title("Concept activation per concept over the test dataset")
+        plt.xlabel("Concept")
+        plt.ylabel("Activation (% of total activation)")
+        plt.grid()
+        plt.show()
+
+    def plot_concept_activation_per_image(self):
+        plt.plot(self.concept_activation_per_image)
+        plt.title("Concept activation per image over the test dataset")
+        plt.xlabel("Concept")
+        plt.ylabel("Activation (% of total activation)")
+        plt.grid()
+        plt.show()
+
+    def plot_class_concept_correlations(self):
+        # Concept indexes in increasing order of activation
+        # concept_by_activation = results.raw_concept_mean_activation.argsort()
+        concept_by_activation = self.class_concept_correlations.mean(axis=0).argsort()
+        classes_by_activation = self.class_concept_correlations.mean(
+            axis=1
+        ).argsort()  # (cls, cpt) -> (cls)
+
+        # Heatmap of the class-concept correlations
+        plt.imshow(
+            self.class_concept_correlations[:, concept_by_activation][classes_by_activation, :]
+        )
+        plt.title("Sorted importance of concepts for each class")
+        plt.xlabel("Concept")
+        plt.ylabel("Class")
+        plt.show()
+
+    def plot_concept_class_correlations(self):
+        classes_by_activation = self.concept_class_correlations.mean(
+            axis=0
+        ).argsort()  # (cpt, cls) -> (cls)
+        concept_by_activation = self.concept_class_correlations.mean(axis=1).argsort()
+
+        # Heatmap of the class-concept correlations
+        plt.imshow(
+            self.concept_class_correlations[concept_by_activation, :][:, classes_by_activation].T
+        )
+        plt.title("Sorted importance of classes for each concept")
+        plt.xlabel("Concept")
+        plt.ylabel("Class")
+        plt.show()
+
+    def plot_concept_entropies(self):
+        plt.plot(
+            self.concept_entropy[self.raw_concept_mean_activation.argsort()][::-1],
+            label="Concept entropy by average activation",
+        )
+        sorted_concept_entropies = np.sort(self.concept_entropy)
+        plt.plot(sorted_concept_entropies, label="Sorted concept entropies")
+        plt.grid()
+        plt.title("Concept entropy among classes (higher means less class-separating)")
+        plt.xlabel("Concept")
+        plt.ylabel("Entropy")
+        plt.legend()
+        plt.show()
 
 
 def test_concepts(

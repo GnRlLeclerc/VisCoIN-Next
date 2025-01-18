@@ -25,6 +25,11 @@
         (final: prev: {
           python312 = prev.python312.override {
             packageOverrides = finalPy: prevPy: {
+
+              opencv4 = prevPy.opencv4.override {
+                enableCuda = false;
+              };
+
               lpips = final.python312.pkgs.buildPythonPackage rec {
                 pname = "lpips";
                 version = "v0.1.4";
@@ -40,7 +45,7 @@
                   torch
                   torchvision
                   numpy
-                  (opencv4.override { enableCuda = false; })
+                  opencv4
                   scikit-image
                   matplotlib
                   tqdm

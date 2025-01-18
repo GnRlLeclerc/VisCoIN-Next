@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.random as rd
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 from torch.utils.data import DataLoader
 
@@ -36,6 +37,9 @@ from viscoin.testing.viscoin import (
 )
 from viscoin.training.classifiers import train_classifier_cub
 from viscoin.training.viscoin import TrainingParameters, train_viscoin_cub
+from viscoin.utils.cli import batch_size, dataset_path, device, viscoin_pickle_path
+from viscoin.utils.gradcam import GradCAM
+from viscoin.utils.images import from_torch, heatmap_to_img, overlay
 from viscoin.utils.logging import configure_score_logging
 from viscoin.utils.types import TestingResults, TrainingResults
 
@@ -45,34 +49,10 @@ def main():
     pass
 
 
-def common_params(func):
-    """Add common parameters to the cli command"""
-    click.argument("model_name")(func)
-    click.option(
-        "--batch-size",
-        default=32,
-        help="The batch size to use for training/testing",
-        type=int,
-    )(func)
-    click.option(
-        "--device",
-        default="cuda",
-        help="The device to use for training/testing",
-        type=str,
-    )(func)
-    click.option(
-        "--dataset-path",
-        help="The path to the dataset to use for training/testing",
-        required=True,
-        type=str,
-    )(func)
-    click.option("--checkpoints", help="The path to load the checkpoints", type=str)(func)
-
-    return func
-
-
 @main.command()
-@common_params
+@batch_size
+@device
+@dataset_path
 @click.option(
     "--epochs",
     help="The amount of epochs to train the model for",
@@ -180,7 +160,9 @@ def train(
 
 
 @main.command()
-@common_params
+@batch_size
+@device
+@dataset_path
 def test(
     model_name: str,
     batch_size: int,
@@ -214,24 +196,9 @@ def test(
 
 
 @main.command()
-@click.option(
-    "--dataset-path",
-    help="The path to the dataset to use for training/testing",
-    required=True,
-    type=str,
-)
-@click.option(
-    "--viscoin-pickle-path",
-    help="The path to the viscoin pickle file",
-    required=True,
-    type=str,
-)
-@click.option(
-    "--n-samples",
-    help="The number of random images to amplify",
-    type=int,
-    default=5,
-)
+@dataset_path
+@viscoin_pickle_path
+@device
 @click.option(
     "--concept-threshold",
     help="Use a concept activation threshold to select the concepts to amplify. In [-1, 1], prefer 0.2 as a default. Exclusive with concept-top-k",
@@ -242,21 +209,16 @@ def test(
     help="The amount of most activated concepts to amplify. Exclusive with concept-threshold",
     type=int,
 )
-@click.option(
-    "--device",
-    help="The device to use for training/testing",
-    type=str,
-    default="cuda",
-)
 def amplify(
     dataset_path: str,
     viscoin_pickle_path: str,
-    n_samples: int,
     concept_threshold: float | None,
     concept_top_k: int | None,
     device: str,
 ):
     """Amplify the concepts of random images from a dataset (showcase)"""
+    n_samples = 5
+
     # Load dataset and models
     models = load_viscoin_pickle(viscoin_pickle_path)
     dataset = CUB_200_2011(dataset_path, mode="test")
@@ -303,34 +265,14 @@ def amplify(
 
 
 @main.command()
-@click.option(
-    "--dataset-path",
-    help="The path to the dataset to use for training/testing",
-    required=True,
-    type=str,
-)
-@click.option(
-    "--viscoin-pickle-path",
-    help="The path to the viscoin pickle file",
-    required=True,
-    type=str,
-)
-@click.option(
-    "--batch-size",
-    default=16,
-    help="The batch size to use for training/testing",
-    type=int,
-)
+@dataset_path
+@viscoin_pickle_path
+@batch_size
+@device
 @click.option(
     "--force",
     help="Recompute the concept through the dataset, even if cached",
     is_flag=True,
-)
-@click.option(
-    "--device",
-    help="The device to use for training/testing",
-    type=str,
-    default="cuda",
 )
 def concepts(
     dataset_path: str,
@@ -361,71 +303,12 @@ def concepts(
     else:
         results = pickle.load(open("concept_results.pkl", "rb"))
 
-    print(f"Classifier accuracy: {results.classifier_accuracy*100:2f}%")
-    print(f"Explainer accuracy: {results.explainer_accuracy*100:2f}%")
-
-    # Display the results in a nice way
-    plt.plot(results.concept_activation_per_concept)
-    plt.title("Concept activation per concept over the test dataset")
-    plt.xlabel("Concept")
-    plt.ylabel("Activation (% of total activation)")
-    plt.grid()
-    plt.show()
-
-    plt.plot(results.concept_activation_per_image)
-    plt.title("Concept activation per image over the test dataset")
-    plt.xlabel("Concept")
-    plt.ylabel("Activation (% of total activation)")
-    plt.grid()
-    plt.show()
-
-    # Concept indexes in increasing order of activation
-    # concept_by_activation = results.raw_concept_mean_activation.argsort()
-    concept_by_activation = results.class_concept_correlations.mean(axis=0).argsort()
-    classes_by_activation = results.class_concept_correlations.mean(
-        axis=1
-    ).argsort()  # (cls, cpt) -> (cls)
-
-    # Heatmap of the class-concept correlations
-    plt.imshow(
-        results.class_concept_correlations[:, concept_by_activation][classes_by_activation, :]
-    )
-    plt.title("Sorted importance of concepts for each class")
-    plt.xlabel("Concept")
-    plt.ylabel("Class")
-    plt.show()
-
-    # Now the same, concepts still sorted like this ? the only imbalance we have left is classes
-    classes_by_activation = results.concept_class_correlations.mean(
-        axis=0
-    ).argsort()  # (cpt, cls) -> (cls)
-    concept_by_activation = results.concept_class_correlations.mean(axis=1).argsort()
-
-    # Heatmap of the class-concept correlations
-    plt.imshow(
-        results.concept_class_correlations[concept_by_activation, :][:, classes_by_activation].T
-    )
-    plt.title("Sorted importance of classes for each concept")
-    plt.xlabel("Concept")
-    plt.ylabel("Class")
-    plt.show()
-
-    # Compute concept entropy among classes
-    # concepts with high entropy are balanced among classes, and do not separate them well
-
-    # Plot sorted concept entropies to showcase the distribution of class-separating concepts
-    plt.plot(
-        results.concept_entropy[results.raw_concept_mean_activation.argsort()][::-1],
-        label="Concept entropy by average activation",
-    )
-    sorted_concept_entropies = np.sort(results.concept_entropy)
-    plt.plot(sorted_concept_entropies, label="Sorted concept entropies")
-    plt.grid()
-    plt.title("Concept entropy among classes (higher means less class-separating)")
-    plt.xlabel("Concept")
-    plt.ylabel("Entropy")
-    plt.legend()
-    plt.show()
+    results.print_accuracies()
+    results.plot_concept_activation_per_concept()
+    results.plot_concept_activation_per_image()
+    results.plot_class_concept_correlations()
+    results.plot_concept_class_correlations()
+    results.plot_concept_entropies()
 
 
 @main.command()
@@ -471,8 +354,94 @@ def to_pickle(checkpoints: str, output: str):
     gan = GeneratorAdapted()
 
     load_viscoin(classifier, concept_extractor, explainer, gan, checkpoints)
-
     save_viscoin_pickle(classifier, concept_extractor, explainer, gan, output)
+
+
+@main.command()
+@dataset_path
+@viscoin_pickle_path
+@device
+def concept_heatmaps(dataset_path: str, viscoin_pickle_path: str, device: str):
+    """Generate heatmaps for random images of the dataset, for the 5 convolutional layers of the concept extractor,
+    using GradCAM."""
+
+    n_samples = 5
+
+    # Load dataset and models
+    models = load_viscoin_pickle(viscoin_pickle_path)
+    dataset = CUB_200_2011(dataset_path, mode="test")
+
+    # Move models to device
+    classifier = models.classifier.to(device)
+    concept_extractor = models.concept_extractor.to(device)
+    explainer = models.explainer.to(device)
+
+    # GradCAM for each convolutional layer
+    gradcam1 = GradCAM(concept_extractor.conv1)
+    gradcam2 = GradCAM(concept_extractor.conv2)
+    gradcam3 = GradCAM(concept_extractor.conv3)
+    gradcam4 = GradCAM(concept_extractor.conv4)
+    gradcam5 = GradCAM(concept_extractor.conv5)
+
+    # Choose random images to amplify
+    indices = rd.choice(len(dataset), n_samples, replace=False)
+    images = torch.zeros(n_samples, 3, 256, 256).to(device)
+    labels = torch.zeros(n_samples, dtype=torch.int64).to(device)
+    for i, index in enumerate(indices):
+        images[i] = dataset[index][0].to(device)
+        labels[i] = dataset[index][1]
+
+    # Do a forward pass
+    _, hidden_states = classifier.forward(images)
+    concept_maps, _ = concept_extractor.forward(hidden_states[-3:])
+    explainer_classes = explainer.forward(concept_maps)
+
+    # Compute loss
+    loss = F.cross_entropy(explainer_classes, labels)
+    loss.backward()
+
+    # Compute heatmaps
+    heatmaps = [
+        gradcam1.compute(),
+        gradcam2.compute(),
+        gradcam3.compute(),
+        gradcam4.compute(),
+        gradcam5.compute(),
+    ]
+
+    columns = [
+        "original",
+        "conv1 from hidden_state[-3]",
+        "conv2 from hidden_state[-2]",
+        "conv3 from hidden_state[-1]",
+        "conv4 after concat",
+        "conv5 after conv4",
+    ]
+
+    fig, axs = plt.subplots(n_samples, 6, figsize=(20, 10))
+    fig.suptitle("GradCAM heatmaps of the concept extractor convolutional layers")
+
+    for row in range(n_samples):
+        for column in range(6):
+            if column == 0:
+                # Display the original image
+                axs[row, column].imshow(from_torch(images[row]))
+            else:
+                # Display the relevant heatmap
+                axs[row, column].imshow(
+                    overlay(
+                        (from_torch(images[row]) * 255).astype(np.uint8),
+                        heatmap_to_img(heatmaps[column - 1][row]),
+                    )
+                )
+
+            if row == 0:
+                # Set the title a bit smaller
+                axs[row, column].set_title(columns[column], fontsize=8)
+
+            axs[row, column].axis("off")
+
+    plt.show()
 
 
 if __name__ == "__main__":

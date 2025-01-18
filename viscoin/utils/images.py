@@ -1,5 +1,6 @@
 """Image utilities"""
 
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -69,3 +70,29 @@ def imshow(x: Tensor, title: str):
     plt.title(title)
     plt.imshow(image)
     plt.show()
+
+
+def heatmap_to_img(heatmap: np.ndarray):
+    """Convert a numpy heatmap to a RGB uint8 image for display or overlay"""
+    heatmap = heatmap.squeeze()
+
+    # Normalize the heatmap
+    heatmap_normalized = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)  # type: ignore
+
+    # Apply the usual colormap
+    heatmap_colored = cv2.applyColorMap(heatmap_normalized, cv2.COLORMAP_JET)
+
+    # Resize to (256, 256)
+    heatmap_resized = cv2.resize(heatmap_colored, (256, 256), interpolation=cv2.INTER_CUBIC)
+
+    # Convert BGR to RGB for displaying with Matplotlib
+    heatmap_resized_rgb = cv2.cvtColor(heatmap_resized, cv2.COLOR_BGR2RGB)
+
+    return heatmap_resized_rgb
+
+
+def overlay(image: np.ndarray, overlay: np.ndarray, alpha=0.4):
+    """Overlay an overlay image on top of a base image"""
+    assert image.dtype == overlay.dtype, "Image and overlay must have the same dtype"
+
+    return cv2.addWeighted(image, 1 - alpha, overlay, alpha, 0)

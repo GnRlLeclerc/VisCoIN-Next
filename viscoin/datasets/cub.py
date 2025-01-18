@@ -59,21 +59,29 @@ class CUB_200_2011(Dataset):
 
         # Load the metadata
         # Extract training and testing image indexes
-        indexes = np.loadtxt(f"{self.dataset_path}train_test_split.txt", dtype=int, delimiter=" ")
+        indexes = np.loadtxt(
+            os.path.join(self.dataset_path, "train_test_split.txt"), dtype=int, delimiter=" "
+        )
         self.train_indexes = indexes[indexes[:, 1] == 1][:, 0] - 1
         self.test_indexes = indexes[indexes[:, 1] == 0][:, 0] - 1
 
         # Read labels
-        labels = np.loadtxt(f"{self.dataset_path}image_class_labels.txt", dtype=int, delimiter=" ")
+        labels = np.loadtxt(
+            os.path.join(self.dataset_path, "image_class_labels.txt"), dtype=int, delimiter=" "
+        )
         labels[:, 1] -= 1  # Labels start at 1 in the file
         self.labels = labels[:, 1]  # Remove the image index
 
         # Read image paths
-        image_paths = np.loadtxt(f"{self.dataset_path}images.txt", dtype=str, delimiter=" ")
+        image_paths = np.loadtxt(
+            os.path.join(self.dataset_path, "images.txt"), dtype=str, delimiter=" "
+        )
         self.image_paths = image_paths[:, 1]  # Remove the image index
 
         # Read bounding boxes
-        bboxes = np.loadtxt(f"{self.dataset_path}bounding_boxes.txt", dtype=int, delimiter=" ")
+        bboxes = np.loadtxt(
+            os.path.join(self.dataset_path, "bounding_boxes.txt"), dtype=int, delimiter=" "
+        )
         self.bboxes = bboxes[:, 1:]  # Remove the image index
 
         # Image cache
@@ -85,7 +93,7 @@ class CUB_200_2011(Dataset):
         Note that tensors have reversed dimensions (C, H, W) instead of (H, W, C)."""
 
         # Load the image
-        image = Image.open(f"{self.dataset_path}images/{self.image_paths[index]}")
+        image = Image.open(os.path.join(self.dataset_path, "images", self.image_paths[index]))
 
         # Convert to RGB if needed
         if image.getbands() == ("L",):
@@ -160,13 +168,15 @@ class Labeled_CUB_200_2011(CUB_200_2011):
         self.attributes_labels = {
             int(k): v
             for k, v in np.loadtxt(
-                f"{self.dataset_path}attributes/attributes.txt", dtype=str, delimiter=" "
+                os.path.join(self.dataset_path, "attributes", "attributes.txt"),
+                dtype=str,
+                delimiter=" ",
             )
         }
 
         # Load the attributes for each image
         self.attributes_file = np.loadtxt(
-            f"{self.dataset_path}attributes/image_attribute_labels_clean.txt",
+            os.path.join(self.dataset_path, "attributes", "image_attribute_labels_clean.txt"),
             dtype=int,
             delimiter=" ",
         )
@@ -193,10 +203,12 @@ class Labeled_CUB_200_2011(CUB_200_2011):
         # Retrieve the class labels for each image
         self.class_labels = {
             int(k): v.split(".")[1].replace("_", " ")
-            for k, v in np.loadtxt(f"{self.dataset_path}classes.txt", dtype=str, delimiter=" ")
+            for k, v in np.loadtxt(
+                os.path.join(self.dataset_path, "classes.txt"), dtype=str, delimiter=" "
+            )
         }  # Names of the 200 classes
         self.image_classes = np.loadtxt(
-            f"{self.dataset_path}image_class_labels.txt", dtype=int, delimiter=" "
+            os.path.join(self.dataset_path, "image_class_labels.txt"), dtype=int, delimiter=" "
         )  # Class label id for each image
 
     def get_caption(self, index: int) -> str:
