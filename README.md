@@ -17,6 +17,8 @@ See also (used in this repository):
 - [StyleGAN2 ADA](https://github.com/NVlabs/stylegan2-ada-pytorch)
 - [CLIP](https://github.com/openai/CLIP)
 
+![Concept Amplification](./images/concept_amplification.png)
+
 ## Project Structure
 
 Structure of the `viscoin` folder.
@@ -76,88 +78,110 @@ Last, the example script:
 python example.py
 ```
 
-## Amplifying concepts
+## CLI Commands
 
-To quickly run concept amplification, you can run the following command:
+The following cli commands are available:
+
+| Command            | Description                                                              |
+| ------------------ | ------------------------------------------------------------------------ |
+| `train`            | Train the classifier model or the VisCoIN ensemble                       |
+| `test`             | Test the classifier model or the VisCoIN ensemble                        |
+| `logs`             | Parse the VisCoIN training logs and plot losses & metrics                |
+| `to-pickle`        | Convert VisCoIN safetensors with defaults args to an easy to load pickle |
+| `concepts`         | Analyze the VisCoIN distribution of concepts                             |
+| `amplify`          | Amplify image concepts                                                   |
+| `concept-heatmaps` | Display concept heatmaps (WIP)                                           |
+
 Be sure to have downloaded the dataset, and to have checkpoints for the viscoin ensemble.
+
+### Train
+
+Train the classifier:
+
+```bash
+# For CUB
+python main.py train classifier --epochs 30 --learning-rate 0.0001  --dataset-path datasets/CUB_200_2011
+```
+
+Train the VisCoIN ensemble:
+
+```bash
+# For CUB
+python main.py train viscoin --batch-size 8 --dataset-path datasets/CUB_200_2011
+```
+
+### Test
+
+Test the classifier:
+
+```bash
+python main.py test classifier --dataset-path datasets/CUB_200_2011 --checkpoints checkpoints/cub/classifier-cub.pt
+```
+
+### Logs
+
+Inspect VisCoIN training logs:
+
+```bash
+python main.py logs --logs-path viscoin_30.log
+```
+
+![VisCoIN Training Losses](./images/viscoin_training_losses.png)
+![VisCoIN Testing Losses](./images/viscoin_testing_losses.png)
+![VisCoIN Metrics](./images/viscoin_metrics.png)
+
+### To Pickle
+
+Convert VisCoIN safetensors after training to a pickle file:
+
+```bash
+python main.py to-pickle --checkpoints viscoin4-5.pth --output viscoin-cub.pkl
+```
+
+### Concepts Analytics
+
+Analyse VisCoIN concepts:
+
+```bash
+python main.py concepts --dataset-path datasets/CUB_200_2011 --viscoin-pickle-path viscoin-cub.pkl
+```
+
+Note that the results are cached. Use `--force` to recompute them.
+
+![Concept Activation Per Image](./images/concept_activation_per_image.png)
+![Concept Activation Per Concept](./images/concept_activation_per_concept.png)
+![Concept Entropy](./images/concept_entropies.png)
+![Class Concept Importance](./images/class_concept_importance.png)
+![Concept Class Importance](./images/concept_class_importance.png)
+
+### Amplifying concepts
 
 Amplifying concepts whose activation is over a threshold:
 
 ```bash
-python main.py amplify --dataset-path datasets/CUB_200_2011/ --viscoin-pickle-path checkpoints/cub/viscoin-cub.pkl --concept-threshold 0.2
+python main.py amplify --dataset-path datasets/CUB_200_2011 --viscoin-pickle-path checkpoints/cub/viscoin-cub.pkl --concept-threshold 0.2
 ```
 
 Amplifying the top k concepts for each image:
 
 ```bash
-python main.py amplify --dataset-path datasets/CUB_200_2011/ --viscoin-pickle-path checkpoints/cub/viscoin-cub.pkl --concept-top-k 5
+python main.py amplify --dataset-path datasets/CUB_200_2011 --viscoin-pickle-path checkpoints/cub/viscoin-cub.pkl --concept-top-k 5
 ```
 
-## Testing concept repartition and correlation
+![Concept Amplification](./images/concept_amplification.png)
 
-You can, for a trained viscoin ensemble, compute the concept correlations and activations, plot them and save them to a pickle file. Use `--force` to ignore cached results.
+### Concept Heatmaps
+
+> ![WARNING]
+> WIP
+
+Visualize concept heatmaps:
 
 ```bash
-python main.py concepts --dataset-path datasets/CUB_200_2011/ --viscoin-pickle-path checkpoints/cub/viscoin-cub.pkl
+python main.py concept-heatmaps --dataset-path datasets/CUB_200_2011 --viscoin-pickle-path viscoin-cub.pkl
 ```
 
-This will create the `concept_results.pkl` file, of type unpickled type `viscoin.testing.concepts.ConceptTestResults`.
-
-## Running jobs with SLURM
-
-There are 2 ways to run jobs on a server that allocates GPUs using SLURM.
-
-Run `sinfo` to see a list of available partitions.
-
-### Interactive
-
-You can run scripts interactively in the terminal with `srun`:
-
-```bash
-srun --gpus=1 --partition=P100 --pty bash  # Open a shell on a GPU node
-srun --gpus=1 --partition=P100 nvidia-smi  # Display the GPU capabilities of a node
-
-# Run a full job interactively
-srun --gpus=1 --partition=P100 --time=00:10:00 --nodes=1 --gpus=1 python main.py test classifier --dataset-path datasets/CUB_200_2011/ --batch-size 512
-```
-
-### Background
-
-In order to run jobs in the background, you have to define bash scripts. Jobs running in the background will write their output to a `slurm-<job-id>.out` file.
-
-Example script:
-
-```bash
-/usr/bin/env bash
-
-# Partition for the job:
-#SBATCH --partition=P100
-
-# Multithreaded (SMP) job: must run on one node
-#SBATCH --nodes=1
-
-# Maximum number of GPUS used by the job:
-#SBATCH --gpus=1
-
-# The maximum running time of the job in days-hours:mins:sec (here: 1h)
-#SBATCH --time=0-01:00:00
-
-srun python main.py test classifier --dataset-path datasets/CUB_200_2011/ --batch-size 512
-```
-
-You then have to run the script (and interact with it) using these commands:
-
-```bash
-sbatch my-script.bash  # Launch the background job
-squeue -j <job-id>  # See whether the job it still running
-```
-
-You can monitor the output using the following command:
-
-```bash
-# You could also use `watch -n 10`, but it has an issue with progress bars
-while true; do clear && cat slurm-<job-id>.out; sleep 10; done
-```
+![Concept Heatmaps](./images/concept_heatmaps.png)
 
 ## Hyperparameters
 
@@ -218,3 +242,59 @@ For all datasets and all subnetworks:
 | Optimizer | Learning Rate | Epochs                         | Batch Size                        |
 | --------- | ------------- | ------------------------------ | --------------------------------- |
 | Adam      | 0.0001        | 100,000 (50,000 for CelebA-HQ) | 16 (8 original + 8 gan generated) |
+
+## Running jobs with SLURM
+
+There are 2 ways to run jobs on a server that allocates GPUs using SLURM.
+
+Run `sinfo` to see a list of available partitions.
+
+### Interactive
+
+You can run scripts interactively in the terminal with `srun`:
+
+```bash
+srun --gpus=1 --partition=P100 --pty bash  # Open a shell on a GPU node
+srun --gpus=1 --partition=P100 nvidia-smi  # Display the GPU capabilities of a node
+
+# Run a full job interactively
+srun --gpus=1 --partition=P100 --time=00:10:00 --nodes=1 --gpus=1 python main.py test classifier --dataset-path datasets/CUB_200_2011/ --batch-size 512
+```
+
+### Background
+
+In order to run jobs in the background, you have to define bash scripts. Jobs running in the background will write their output to a `slurm-<job-id>.out` file.
+
+Example script:
+
+```bash
+/usr/bin/env bash
+
+# Partition for the job:
+#SBATCH --partition=P100
+
+# Multithreaded (SMP) job: must run on one node
+#SBATCH --nodes=1
+
+# Maximum number of GPUS used by the job:
+#SBATCH --gpus=1
+
+# The maximum running time of the job in days-hours:mins:sec (here: 1h)
+#SBATCH --time=0-01:00:00
+
+srun python main.py test classifier --dataset-path datasets/CUB_200_2011/ --batch-size 512
+```
+
+You then have to run the script (and interact with it) using these commands:
+
+```bash
+sbatch my-script.bash  # Launch the background job
+squeue -j <job-id>  # See whether the job it still running
+```
+
+You can monitor the output using the following command:
+
+```bash
+# You could also use `watch -n 10`, but it has an issue with progress bars
+while true; do clear && cat slurm-<job-id>.out; sleep 10; done
+```
