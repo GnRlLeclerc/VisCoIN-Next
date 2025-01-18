@@ -385,6 +385,7 @@ def concept_heatmaps(dataset_path: str, viscoin_pickle_path: str, device: str):
 
     # Choose random images to amplify
     indices = rd.choice(len(dataset), n_samples, replace=False)
+    # indices = [0, 1, 2, 100, 200]
     images = torch.zeros(n_samples, 3, 256, 256).to(device)
     labels = torch.zeros(n_samples, dtype=torch.int64).to(device)
     for i, index in enumerate(indices):
@@ -395,6 +396,8 @@ def concept_heatmaps(dataset_path: str, viscoin_pickle_path: str, device: str):
     _, hidden_states = classifier.forward(images)
     concept_maps, _ = concept_extractor.forward(hidden_states[-3:])
     explainer_classes = explainer.forward(concept_maps)
+
+    explainer_labels = explainer_classes.argmax(dim=1)
 
     # Compute loss
     loss = F.cross_entropy(explainer_classes, labels)
@@ -422,12 +425,19 @@ def concept_heatmaps(dataset_path: str, viscoin_pickle_path: str, device: str):
     fig.suptitle("GradCAM heatmaps of the concept extractor convolutional layers")
 
     for row in range(n_samples):
+        # Set the row label
+        is_correct = labels[row] == explainer_labels[row]
+        confidence = F.softmax(explainer_classes[row], dim=0).max().item()
+
+        axs[row, 0].set_ylabel(f"{is_correct} with {100 * confidence:.0f}%", fontsize=8)
+
         for column in range(6):
             if column == 0:
                 # Display the original image
                 axs[row, column].imshow(from_torch(images[row]))
             else:
                 # Display the relevant heatmap
+                axs[row, column].axis("off")
                 axs[row, column].imshow(
                     overlay(
                         (from_torch(images[row]) * 255).astype(np.uint8),
@@ -438,8 +448,6 @@ def concept_heatmaps(dataset_path: str, viscoin_pickle_path: str, device: str):
             if row == 0:
                 # Set the title a bit smaller
                 axs[row, column].set_title(columns[column], fontsize=8)
-
-            axs[row, column].axis("off")
 
     plt.show()
 
