@@ -53,6 +53,7 @@ def main():
 @batch_size
 @device
 @dataset_path
+@click.argument("model_name")
 @click.option(
     "--epochs",
     help="The amount of epochs to train the model for",
@@ -77,6 +78,7 @@ def main():
     type=int,
     default=1,
 )
+@click.option("--checkpoints", help="The path to load the checkpoints", type=str)
 def train(
     model_name: str,
     batch_size: int,
@@ -163,6 +165,8 @@ def train(
 @batch_size
 @device
 @dataset_path
+@click.argument("model_name")
+@click.option("--checkpoints", help="The path to load the checkpoints", type=str)
 def test(
     model_name: str,
     batch_size: int,
