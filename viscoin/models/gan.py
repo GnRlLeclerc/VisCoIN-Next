@@ -24,7 +24,7 @@ from stylegan2_ada.training.networks import (
     normalize_2nd_moment,
 )
 
-_default_viscoin_mapping_kwargs = {
+_default_viscoin_mapping_kwargs: dict = {
     "coarse_layer": 2,
     "mid_layer": 10,
     "num_layers": 1,
