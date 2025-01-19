@@ -20,7 +20,7 @@ dependencies:
   - numpy
   - lpips
   - openai-clip
-  - opencv-python
+  - opencv
 
   # Utilities
   - click
