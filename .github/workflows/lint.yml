@@ -27,6 +27,8 @@ jobs:
           environment-name: viscoin
           cache-environment: true
           cache-downloads: true
+          # https://github.com/mamba-org/setup-micromamba/issues/130
+          generate-run-shell: false
 
       - name: Install Pyright and Isort
         run: pip install pyright isort
