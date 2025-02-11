@@ -1,19 +1,17 @@
-from torch import nn, optim
-from torch.utils.data import DataLoader, Dataset
-from tqdm import tqdm
 from dataclasses import dataclass
 
 import torch
+from clip.model import CLIP
+from torch import nn, optim
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from viscoin.models.classifiers import Classifier
 from viscoin.models.clip_adapter import ClipAdapter, ClipAdapterVAE
 from viscoin.models.concept_extractors import ConceptExtractor
-from viscoin.models.classifiers import Classifier
-from viscoin.utils.logging import get_logger
-
-from viscoin.training.losses import vae_reconstruction_loss
-
 from viscoin.testing.clip_adapter import test_adapter
-
-from clip.model import CLIP
+from viscoin.training.losses import vae_reconstruction_loss
+from viscoin.utils.logging import get_logger
 
 
 @dataclass
@@ -87,8 +85,8 @@ def train_clip_adapter_cub(
             clip_embeddings = clip_model.encode_image(inputs).float()
 
             # Predicted clip embeddings
-            classes, hidden = classifier.forward(inputs)
-            concept_space, gan_helper_space = concept_extractor.forward(hidden[-3:])
+            _, hidden = classifier.forward(inputs)
+            concept_space, _ = concept_extractor.forward(hidden[-3:])
 
             output = clip_adapter(concept_space.view(-1, concept_extractor.n_concepts * 9))
 
@@ -121,11 +119,11 @@ def train_clip_adapter_cub(
             clip_model,
             test_loader,
             device,
-            params.test_criterion,
+            params.test_criterion,  # type: ignore
             False,
         )
 
-        if mean_loss < best_loss:
+        if mean_loss < best_loss:  # type: ignore
             best_model = clip_adapter.state_dict()
             best_loss = mean_loss
 

@@ -113,6 +113,7 @@
                 # Utilities
                 click
                 matplotlib
+                pandas
               ]
             ))
           ];

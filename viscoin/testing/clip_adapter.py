@@ -1,20 +1,19 @@
 """Classifiers testing functions"""
 
+import clip
 import torch
+from clip.model import CLIP
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from viscoin.models.classifiers import Classifier
+from viscoin.models.clip_adapter import ClipAdapter, ClipAdapterVAE
 from viscoin.models.concept_extractors import ConceptExtractor
-from viscoin.models.clip_adapter import ClipAdapter
-
-from clip.model import CLIP
-import clip
 
 
 def test_adapter(
-    clip_adapter: ClipAdapter,
+    clip_adapter: ClipAdapter | ClipAdapterVAE,
     classifier: Classifier,
     concept_extractor: ConceptExtractor,
     clip_model: CLIP,
@@ -54,8 +53,8 @@ def test_adapter(
             clip_embeddings = clip_model.encode_image(inputs)
 
             # Predicted clip embeddings
-            classes, hidden = classifier.forward(inputs)
-            concept_space, gan_helper_space = concept_extractor.forward(hidden[-3:])
+            _, hidden = classifier.forward(inputs)
+            concept_space, _ = concept_extractor.forward(hidden[-3:])
 
             output = clip_adapter(concept_space.view(-1, concept_extractor.n_concepts * 9))
 
@@ -65,7 +64,7 @@ def test_adapter(
 
     batch_mean_loss = total_loss / len(dataloader)
 
-    return batch_mean_loss
+    return batch_mean_loss  # type: ignore
 
 
 def get_concept_labels_vocab(
@@ -111,7 +110,7 @@ def get_concept_labels_vocab(
 
             # Get the clip embeddings from the concept embeddings using the adapter
             if clip_adapter_type == "clip_adapter_vae":
-                predicted_clip_embedding, mu, logvar = clip_adapter(concept_embedding.to(device))
+                predicted_clip_embedding, *_ = clip_adapter(concept_embedding.to(device))
             else:
                 predicted_clip_embedding = clip_adapter(concept_embedding.to(device))
 

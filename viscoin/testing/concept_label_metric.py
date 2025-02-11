@@ -1,17 +1,16 @@
+import os
+import random
+
+import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
+from viscoin.datasets.cub import CUB_200_2011
 from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
-from viscoin.datasets.cub import CUB_200_2011
-
 from viscoin.models.utils import load_viscoin_pickle
-
-import numpy as np
-import os
-import random
-import pandas as pd
 
 BATCH_SIZE = 1000
 
@@ -53,7 +52,7 @@ class ViscoinWrapper(torch.nn.Module):
         # Identity layer for which to save the activations
         self.identity = torch.nn.Identity()
 
-    def to(self, device):
+    def to(self, device):  # type: ignore
         self.classifier.to(device)
         self.concept_extractor.to(device)
         return self
@@ -261,7 +260,7 @@ def evaluate_concept_labels(
     device: str,
     evaluation_method: str = "topk",
     topk_value: int = 5,
-    neurons_to_study: list[int] = None,
+    neurons_to_study: list[int] | None = None,
 ):
     """Evaluate the concept labels using the expert annotations score and the specified method
 
