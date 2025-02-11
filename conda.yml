@@ -21,7 +21,6 @@ dependencies:
   - lpips
   - openai-clip
   - opencv
-  - clip
 
   # Utilities
   - click
