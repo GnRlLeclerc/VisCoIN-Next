@@ -20,14 +20,6 @@ class Classifier(nn.Module):
 
     Hidden states for some ResNet models (note that the first dimension is the batch size):
 
-    Resnet-18:
-     - Layer 1: (1, 64, 56, 56)
-     - Layer 2: (1, 64, 56, 56)
-     - Layer 3: (1, 128, 28, 28)
-     - Layer 4: (1, 256, 14, 14)
-     - Layer 5: (1, 512, 7, 7)
-    hidden config [64, 128, 256, 512]
-
     Resnet-50:
      - Layer 1: (1, 64, 56, 56)
      - Layer 2: (1, 256, 56, 56)
@@ -41,7 +33,6 @@ class Classifier(nn.Module):
         """Initialize a ResNet-based classifier model with a custom head on top for classification.
 
         Args:
-            resnet: the ResNet model to use as a base (either "18" or "50")
             output_classes: the number of output classes (size of the last layer)
             pretrained: whether to load pretrained weights or not
 
@@ -49,18 +40,18 @@ class Classifier(nn.Module):
 
         Pretrained model:
         ```python
-        >>> model = Classifier(resnet="50", output_classes=200, pretrained=True)
+        >>> model = Classifier(output_classes=200, pretrained=True)
         ```
 
         Custom model:
         ```python
-        >>> model = Classifier(resnet="18", output_classes=200, pretrained=False)
+        >>> model = Classifier(output_classes=200, pretrained=False)
         >>> model.load_weights("model.pt")
         ```
         """
         super().__init__()
 
-        model_name = f"microsoft/resnet-50"
+        model_name = "microsoft/resnet-50"
 
         # Load the model
         if pretrained:
