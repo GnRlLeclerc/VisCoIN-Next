@@ -10,6 +10,7 @@ from tqdm import tqdm
 from viscoin.models.classifiers import Classifier
 from viscoin.models.clip_adapter import ClipAdapter, ClipAdapterVAE
 from viscoin.models.concept_extractors import ConceptExtractor
+from viscoin.utils.metrics import cosine_matching
 
 
 def test_adapter(
@@ -43,6 +44,7 @@ def test_adapter(
     with torch.no_grad():
         total_loss = 0
         total_samples = 0
+        matching_accuracy = 0
 
         for inputs, targets in tqdm(dataloader, desc="Test batches", disable=not verbose):
             # Move batch to device
@@ -60,11 +62,12 @@ def test_adapter(
 
             # Update metrics
             total_loss += criterion(output, clip_embeddings).item()
+            matching_accuracy += cosine_matching(output, clip_embeddings)
             total_samples += targets.size(0)
 
     batch_mean_loss = total_loss / len(dataloader)
 
-    return batch_mean_loss  # type: ignore
+    return (batch_mean_loss, matching_accuracy / len(dataloader))
 
 
 def get_concept_labels_vocab(

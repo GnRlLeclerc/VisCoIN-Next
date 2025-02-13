@@ -112,7 +112,7 @@ def train_clip_adapter_cub(
         #                                       TESTING STEP                                      #
         ###########################################################################################
 
-        mean_loss = test_adapter(
+        mean_loss, matching_accuracy = test_adapter(
             clip_adapter,
             classifier,
             concept_extractor,
@@ -129,10 +129,15 @@ def train_clip_adapter_cub(
 
         # Log the current state of training
         logger.info(
-            f"Epoch {epoch}/{params.epochs} - Train Loss: {batch_mean_loss:.4f} - Test Loss: {mean_loss:.4f}"
+            f"Epoch {epoch}/{params.epochs} - Train Loss: {batch_mean_loss:.4f} - Test Loss: {mean_loss:.4f} - Matching Accuracy: {matching_accuracy:.4f}"
         )
 
-        progress.set_postfix(train_loss=batch_mean_loss, test_loss=mean_loss, best_loss=best_loss)
+        progress.set_postfix(
+            train_loss=batch_mean_loss,
+            test_loss=mean_loss,
+            best_loss=best_loss,
+            matching_accuracy=matching_accuracy,
+        )
 
     # Load the best model
     print(f"Best test loss: {best_loss:.4f}")

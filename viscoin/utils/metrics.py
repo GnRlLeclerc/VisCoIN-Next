@@ -20,6 +20,6 @@ def cosine_matching(original: Tensor, rebuilt: Tensor) -> float:
 
     similarities = F.cosine_similarity(original[:, None, :], rebuilt, dim=2)
     best = torch.argmax(similarities, dim=1)
-    correct = torch.sum(best == torch.arange(original.shape[0]))
+    correct = torch.sum(best == torch.arange(original.shape[0]).to(best.device))
 
     return correct.item() / original.shape[0]
