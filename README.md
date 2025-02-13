@@ -12,6 +12,8 @@ Implementation of Vision Concept-based Interpretable Networks. [See the paper](h
 
 This project uses the [Black](https://github.com/psf/black) python formatter. Imports are sorted using [isort](https://pycqa.github.io/isort/).
 
+Download the CUB dataset [here](https://www.kaggle.com/datasets/wenewone/cub2002011).
+
 See also (used in this repository):
 
 - [StyleGAN2 ADA](https://github.com/NVlabs/stylegan2-ada-pytorch)
