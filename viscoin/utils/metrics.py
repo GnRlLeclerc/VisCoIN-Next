@@ -19,7 +19,15 @@ def cosine_matching(original: Tensor, rebuilt: Tensor) -> float:
     assert original.dim() == 2, "Tensors must be 2D"
 
     similarities = F.cosine_similarity(original[:, None, :], rebuilt, dim=2)
-    best = torch.argmax(similarities, dim=1)
-    correct = torch.sum(best == torch.arange(original.shape[0]).to(best.device))
+
+    # Highest similarity values for each row
+    highest = torch.max(similarities, dim=1)
+
+    # Similarity value of the original pairs
+    arange = torch.arange(original.shape[0])
+    diagonal = similarities[arange, arange]
+
+    # NOTE: we compare by value and not index, as multiple embeddings can have the same similarity
+    correct = torch.sum(highest.values == diagonal)
 
     return correct.item() / original.shape[0]
