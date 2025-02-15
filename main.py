@@ -16,6 +16,7 @@ import click
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.random as rd
+import pandas as pd
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -530,23 +531,25 @@ def concept_heatmaps(dataset_path: str, viscoin_pickle_path: str, device: str):
 @main.command()
 @clip_adapter_path
 @vocab_path
+@viscoin_pickle_path
 @click.option(
     "--n-concepts",
     help="The number of concepts",
     type=int,
     default=256,
 )
+@dataset_path
 @click.option(
-    "--clip-adapter-type",
-    help="The type of clip adapter model to use (clip_adapter or clip_adapter_vae)",
-    type=str,
-    default="clip_adapter",
+    "--amplify-multiplier",
+    help="The multiplier to amplify to the concept",
+    type=float,
+    default=4.0,
 )
 @click.option(
-    "--concept-embedding-method",
-    help="The method to use to generate the concept space embeddings",
-    type=str,
-    default="ones",
+    "--selection-n",
+    help="The number of images to select for each concept",
+    type=int,
+    default=100,
 )
 @click.option(
     "--output_path",
@@ -558,51 +561,74 @@ def concept_heatmaps(dataset_path: str, viscoin_pickle_path: str, device: str):
 def clip_concept_labels(
     clip_adapter_path: str,
     vocab_path: str,
+    viscoin_pickle_path: str,
     n_concepts: int,
-    clip_adapter_type: str,
-    concept_embedding_method: str,
+    dataset_path: str,
+    amplify_multiplier: float,
+    selection_n: int,
     output_path: str,
     device: str,
 ):
     """
     Generate concept labels from a given vocabulary using the clip adapter model :
-        The clip adapter model is used to generate clip embeddings from concept space embeddings.
-        Those clip embeddings are then compared to the text embeddings of the vocabulary to get the concept labels.
 
-        We generate the concept space embeddings for each concept for instance by putting a 1 in the 9 corresponding positions of a vector of size n_concepts*9.
+        We select the most activating images for each concept based on a threshold.
+        For each image, we compute its CLIP embedding and the CLIP embedding of the image where the concept is amplified.
+        We compute the difference between the two and compute the similarity with the vocabulary.
+        We average the similarity for each concept and save the results to a file.
 
     Args:
         clip_adapter_path (str): Path to the clip adapter model
         vocab_path (str): Path to the vocabulary file (.txt)
+        viscoin_pickle_path (str): Path to the viscoin pickle file
         n_concepts (int): The number of concepts
+        dataset_path (str): Path to the dataset
+        amplify_multiplier (float): The multiplier to amplify to the concept
+        selection_n (int): The number of images to select for each concept
+        output_path (str): The path to save the concept labels
     """
 
-    clip_adapter = torch.load(clip_adapter_path).to(device)
+    # Load CLIP adapter model and CLIP model
+    clip_adapter = torch.load(clip_adapter_path, weights_only=False).to(device)
 
-    clip_model, preprocess = clip.load("ViT-B/32", device=device)
+    clip_model, preprocess = clip.load("ViT-B/16", device=device)
 
+    # Load Viscoin Classifier and Concept Extractor
+    viscoin = load_viscoin_pickle(viscoin_pickle_path)
+    viscoin.classifier = viscoin.classifier.to(device)
+    viscoin.concept_extractor = viscoin.concept_extractor.to(device)
+
+    # Load the vocabulary from which to chose the concept labels
     with open(vocab_path, "r") as f:
         vocab = f.readlines()
 
     vocab = [v.strip() for v in vocab]
 
-    concept_labels, probs = get_concept_labels_vocab(
+    # Load the dataset
+    dataset = CUB_200_2011(dataset_path, mode="test")
+
+    concept_labels, probs, most_activating_images = get_concept_labels_vocab(
         clip_adapter,
+        viscoin.concept_extractor,
+        viscoin.classifier,
         clip_model,
         vocab,
         n_concepts,
-        clip_adapter_type,
-        concept_embedding_method,
+        dataset,
+        amplify_multiplier,
+        selection_n,
         device,
     )
 
     # Save to file
     with open(output_path, "w") as f:
 
-        f.write("unit,description,similarity\n")
+        f.write("unit,description,similarity,most-activating-images\n")
 
         for i, label in enumerate(concept_labels):
-            f.write(f"{i},{label},{probs[i]}\n")
+            f.write(
+                f"{i},{label},{probs[i]},{":".join(np.char.mod("%i", most_activating_images[i]))}\n"
+            )
 
 
 @main.command()
@@ -664,6 +690,75 @@ def evalutate_concept_captions(
         topk_value,
         neurons_to_study,
     )
+
+
+@main.command()
+@viscoin_pickle_path
+@dataset_path
+@click.option(
+    "--concept-labels-path",
+    help="The path to the concept labels file",
+    type=str,
+    default="./concept_labels.csv",
+)
+@click.option(
+    "--concept-indices",
+    help="The indices of the concepts to amplify : eg. 1,2,3,4,5",
+    type=str,
+    required=True,
+)
+@click.option(
+    "--image-indices", help="The indices of the images to amplify : eg. 1,2,3,4,5", type=str
+)
+@device
+def amplify_single_concepts(
+    viscoin_pickle_path: str,
+    dataset_path: str,
+    concept_labels_path: str,
+    concept_indices: list[int],
+    image_indices: list[int],
+    device: str,
+):
+    """Similar to amplify, but instead of amplifying multiple concepts for a given image, we amplify only a single concept per image.
+
+    Args:
+        viscoin_pickle_path (str): _description_
+        dataset_path (str): _description_
+        concept_labels_path (str): _description_
+        concept_indices (list[int]): _description_
+        image_indices (list[int]): _description_
+        device (str): _description_
+    """
+
+    dataset = CUB_200_2011(dataset_path, mode="test")
+    images = []
+    concept_labels = []
+
+    concept_indices = [int(i) for i in concept_indices.split(",")]
+
+    # If a path to the concept labels file is provided, we load the concept labels and the most activating images
+    if concept_labels_path:
+        concept_labels_df = pd.read_csv(concept_labels_path)
+
+        concept_labels = concept_labels_df["description"].values[concept_indices]
+        # Retrieve the most activating images for the selected concepts
+        saved_image_indices = concept_labels_df["most-activating-images"].values[concept_indices]
+        saved_image_indices = [int(l.split(":")[0]) for l in saved_image_indices]
+
+    # Either use the provided image indices or the ones given in the concept labels file
+    if image_indices:
+        image_indices = [int(i) for i in image_indices.split(",")]
+    else:
+        assert (
+            concept_labels_path
+        ), "You must provide the concept labels file if you do not provide the image indices"
+        image_indices = saved_image_indices
+
+    assert len(concept_indices) == len(
+        image_indices
+    ), "The number of concepts and images must be the same"
+
+    viscoin = load_viscoin_pickle(viscoin_pickle_path)
 
 
 if __name__ == "__main__":

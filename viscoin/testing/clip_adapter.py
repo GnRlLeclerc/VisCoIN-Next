@@ -11,6 +11,7 @@ from viscoin.models.classifiers import Classifier
 from viscoin.models.clip_adapter import ClipAdapter, ClipAdapterVAE
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.utils.metrics import cosine_matching
+from viscoin.datasets.cub import CUB_200_2011
 
 
 def test_adapter(
@@ -72,20 +73,26 @@ def test_adapter(
 
 def get_concept_labels_vocab(
     clip_adapter: ClipAdapter,
+    concept_extractor: ConceptExtractor,
+    classifier: Classifier,
     clip_model: CLIP,
     vocab: list[str],
     n_concepts: int,
-    clip_adapter_type: str,
-    concept_embedding_method: str,
+    dataset: CUB_200_2011,
+    multiplier: int,
+    selection_n: int,
     device: str,
 ) -> tuple[list[str], list[torch.Tensor]]:
-    """Get the concept labels vocabulary for the adapter
+    """Retrieve concept labels for VisCoIN concepts from CLIP embeddings
 
     Args:
         clip_adapter: the trained clip adapter model
         clip_model: the loaded CLIP model
         vocab: the vocabulary from which to chose the concept labels
         n_concepts: the number of concepts
+        dataset
+        multiplier: the multiplier to amplify to the concept
+        selection_n: the number of most activating images to select per concept
         device: the device to use for the computation
 
     Returns:
@@ -93,74 +100,90 @@ def get_concept_labels_vocab(
         probs: the probabilities of the concept labels
     """
 
-    concept_labels = []
-    probs_per_concept = []
+    n_vocab = len(vocab)
+    batch_size = 128
+    mean_concept_label_similarity = torch.zeros((n_concepts, n_vocab)).to(device)
+    image_concepts = torch.zeros((len(dataset), n_concepts, 3, 3))
+    most_activating_images_per_concept = []  # List to store selected image indices for each concept
 
     clip_adapter.eval()
 
-    # Tokenize the vocabulary and embed it
-    tokenized_vocab = clip.tokenize(vocab).to(device)
-
-    text_features = clip_model.encode_text(tokenized_vocab).float()
-    normalized_text_features = text_features / text_features.norm(dim=-1, keepdim=True)
-
-    concept_space_embeddings = generate_concept_embeddings(
-        n_concepts, method=concept_embedding_method
-    )
-
     with torch.no_grad():
-        for concept_embedding in concept_space_embeddings:
 
-            # Get the clip embeddings from the concept embeddings using the adapter
-            if clip_adapter_type == "clip_adapter_vae":
-                predicted_clip_embedding, *_ = clip_adapter(concept_embedding.to(device))
-            else:
-                predicted_clip_embedding = clip_adapter(concept_embedding.to(device))
+        # Pre-compute vocabulary CLIP embeddings:
+        vocab_embeddings = torch.zeros((n_vocab, 512)).to(device)
+        for i, label in enumerate(vocab):
+            text_features = clip_model.encode_text(clip.tokenize(label).to(device)).float()
+            text_features /= text_features.norm(dim=-1, keepdim=True)
+            vocab_embeddings[i] = text_features
 
-            normalized_image_features = predicted_clip_embedding / predicted_clip_embedding.norm(
-                dim=-1, keepdim=True
+        # Step 1: Extract Concepts for all images
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+        for i, (image, _) in tqdm(
+            enumerate(dataloader), desc="Computing concepts for each image", total=len(dataloader)
+        ):
+            image = image.to(device)
+            _, hidden = classifier.forward(image)
+            concept_space, _ = concept_extractor.forward(hidden[-3:])
+            image_concepts[i * batch_size : (i + 1) * batch_size] = concept_space
+
+        # Step 2: Select selection_n most activating images for each concept
+        pooled_image_concepts = torch.mean(image_concepts, dim=(2, 3)).transpose(0, 1)
+
+        most_activating_images_per_concept = torch.argsort(
+            pooled_image_concepts, dim=1, descending=True
+        )[:, :selection_n]
+
+        # Step 3: Process each concept and selected images
+        for concept_idx in tqdm(range(n_concepts), desc="Processing concepts"):
+
+            selected_indices = most_activating_images_per_concept[concept_idx]
+
+            embedding_differences = torch.zeros((len(selected_indices), 512)).to(device)
+
+            for i, image_idx in enumerate(selected_indices):
+
+                image = dataset[image_idx][0].to(device)
+                original_concept = image_concepts[image_idx]
+
+                # Compute original CLIP embedding
+                clip_embedding = clip_adapter(
+                    original_concept.view(-1, concept_extractor.n_concepts * 9).to(device)
+                )
+
+                # Compute amplified concept and its CLIP embedding ---
+                amplified_concept = original_concept.clone()
+                amplified_concept[concept_idx] *= multiplier
+                amplified_clip_embedding = clip_adapter(
+                    amplified_concept.view(-1, concept_extractor.n_concepts * 9).to(device)
+                )
+
+                # Compute embedding difference
+                embedding_difference = amplified_clip_embedding - clip_embedding
+                if embedding_difference.norm(dim=-1, keepdim=True) != 0:
+                    embedding_difference /= embedding_difference.norm(dim=-1, keepdim=True)
+
+                if embedding_difference.isnan().any():
+                    print("NANs in embedding difference")
+
+                embedding_differences[i] = embedding_difference
+
+            # Compute similarity with vocab
+            similarities = embedding_differences @ vocab_embeddings.T
+            mean_concept_label_similarity[concept_idx] = torch.mean(similarities, dim=0)
+
+        # Step 4: Compute mean similarities
+        for concept_idx in range(n_concepts):
+            mean_concept_label_similarity[concept_idx] /= len(
+                most_activating_images_per_concept[concept_idx]
             )
 
-            # Compute logits and probabilities
-            logits_per_image = normalized_image_features @ normalized_text_features.T
+    # Step 5: Get top vocab words
+    concept_labels = []
+    probs = []
+    for concept_idx in range(n_concepts):
+        top_idx = torch.argmax(mean_concept_label_similarity[concept_idx])
+        concept_labels.append(vocab[top_idx])
+        probs.append(mean_concept_label_similarity[concept_idx, top_idx])
 
-            probs = logits_per_image.softmax(dim=-1).cpu().numpy()
-            idx = probs.argmax()
-
-            concept_labels.append(vocab[idx])
-
-            probs_per_concept.append(probs.max())
-
-    return concept_labels, probs_per_concept
-
-
-def generate_concept_embeddings(n_concepts: int, method: str = "ones") -> list[torch.Tensor]:
-    """Generate fake concept embeddings to obtain a label
-
-    Args:
-        n_concepts (int)
-        method (str, optional): the method to use to generate the embeddings, by default, all values are zero except for the 9 corresponding to the concept which are 1.0.
-
-    Returns:
-        A list of tensors containing the concept embeddings
-    """
-
-    concepts = [torch.zeros(1, n_concepts * 9) for _ in range(n_concepts)]
-
-    match method:
-
-        case "ones":
-
-            for j in range(n_concepts):
-                concepts[j][0, j * 9 : (j + 1) * 9] = 1.0
-
-        case "soft":
-
-            for j in range(n_concepts):
-                concepts[j][0, :] = 0.1
-                concepts[j][0, j * 9 : (j + 1) * 9] = 10.0
-
-        case _:
-            raise ValueError(f"Invalid method: {method}")
-
-    return concepts
+    return concept_labels, probs, most_activating_images_per_concept.cpu().numpy()
