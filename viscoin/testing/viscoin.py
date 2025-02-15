@@ -294,6 +294,32 @@ def amplify_concepts(
     return results
 
 
+def amplify_single_concepts(
+    image: Tensor,
+    generator: GeneratorAdapted,
+    classifier: Classifier,
+    concept_extractor: ConceptExtractor,
+    concept_index: int,
+    multipliers: list[float],
+):
+
+    _, classifier_latents = classifier.forward(image.unsqueeze(0))
+    concept_embeddings, extra_info = concept_extractor.forward(classifier_latents[-3:])
+
+    amplified_images = []
+    for multiplier in multipliers:
+
+        embeddings = concept_embeddings.clone()
+        embeddings[0, concept_index] *= multiplier
+
+        with torch.no_grad():
+            new_image = generator(z1=embeddings, z2=extra_info, noise_mode="const")
+
+        amplified_images.append(new_image)
+
+    return amplified_images
+
+
 def plot_amplified_images(original: Tensor, images: list[Tensor], multipliers: list[float]):
     """Plot amplified images in a row, with their corresponding multiplier in the title"""
 
@@ -316,7 +342,10 @@ def plot_amplified_images(original: Tensor, images: list[Tensor], multipliers: l
 
 
 def plot_amplified_images_batch(
-    originals: list[Tensor], images: list[list[Tensor]], multipliers: list[float]
+    originals: list[Tensor],
+    images: list[list[Tensor]],
+    multipliers: list[float],
+    labels: list[str] = None,
 ):
     """Plot amplified images in a row, with their corresponding multiplier in the title.
     This function can plot multiple rows."""
@@ -331,6 +360,9 @@ def plot_amplified_images_batch(
         axs[i, 0].imshow(original)
         axs[i, 0].set_title("Original")
         axs[i, 0].axis("off")
+
+        if labels is not None:
+            axs[i, 0].set_title(f"Predicted Label : {labels[i]}\nOriginal")
 
         for j, (image, multiplier) in enumerate(zip(row_images, multipliers)):
             axs[i, j + 1].imshow(image)

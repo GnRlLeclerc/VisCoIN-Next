@@ -170,12 +170,9 @@ def get_concept_labels_vocab(
 
             # Compute similarity with vocab
             similarities = embedding_differences @ vocab_embeddings.T
-            mean_concept_label_similarity[concept_idx] = torch.mean(similarities, dim=0)
 
-        # Step 4: Compute mean similarities
-        for concept_idx in range(n_concepts):
-            mean_concept_label_similarity[concept_idx] /= len(
-                most_activating_images_per_concept[concept_idx]
+            mean_concept_label_similarity[concept_idx] = torch.nn.functional.softmax(
+                torch.mean(similarities, dim=0), dim=0
             )
 
     # Step 5: Get top vocab words

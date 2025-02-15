@@ -22,6 +22,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.utils.data import DataLoader
 import clip
+import random
 
 
 # Imports Trogon if installed : Terminal User Interface for Click commands
@@ -48,6 +49,7 @@ from viscoin.testing.viscoin import (
     ThresholdSelection,
     TopKSelection,
     amplify_concepts,
+    amplify_single_concepts,
     plot_amplified_images_batch,
 )
 from viscoin.training.classifiers import train_classifier_cub
@@ -711,7 +713,7 @@ def evalutate_concept_captions(
     "--image-indices", help="The indices of the images to amplify : eg. 1,2,3,4,5", type=str
 )
 @device
-def amplify_single_concepts(
+def amplify_single(
     viscoin_pickle_path: str,
     dataset_path: str,
     concept_labels_path: str,
@@ -729,12 +731,12 @@ def amplify_single_concepts(
         image_indices (list[int]): _description_
         device (str): _description_
     """
-
-    dataset = CUB_200_2011(dataset_path, mode="test")
-    images = []
     concept_labels = []
 
-    concept_indices = [int(i) for i in concept_indices.split(",")]
+    if concept_indices == "random":
+        concept_indices = random.sample(range(0, 256), 5)
+    else:
+        concept_indices = [int(i) for i in concept_indices.split(",")]
 
     # If a path to the concept labels file is provided, we load the concept labels and the most activating images
     if concept_labels_path:
@@ -743,7 +745,7 @@ def amplify_single_concepts(
         concept_labels = concept_labels_df["description"].values[concept_indices]
         # Retrieve the most activating images for the selected concepts
         saved_image_indices = concept_labels_df["most-activating-images"].values[concept_indices]
-        saved_image_indices = [int(l.split(":")[0]) for l in saved_image_indices]
+        saved_image_indices = [int(l.split(":")[random.randint(0, 5)]) for l in saved_image_indices]
 
     # Either use the provided image indices or the ones given in the concept labels file
     if image_indices:
@@ -759,6 +761,28 @@ def amplify_single_concepts(
     ), "The number of concepts and images must be the same"
 
     viscoin = load_viscoin_pickle(viscoin_pickle_path)
+    dataset = CUB_200_2011(dataset_path, mode="test")
+
+    images_batch = []
+    amplified_images_batch = []
+    multipliers = [0.0, 1.0, 2.0, 4.0]
+
+    for i, image_idx in enumerate(image_indices):
+        image = dataset[image_idx][0].to(device)
+
+        amplified_images = amplify_single_concepts(
+            image.to(device),
+            viscoin.gan.to(device),
+            viscoin.classifier.to(device),
+            viscoin.concept_extractor.to(device),
+            concept_indices[i],
+            multipliers,
+        )
+
+        images_batch.append(image)
+        amplified_images_batch.append(amplified_images)
+
+    plot_amplified_images_batch(images_batch, amplified_images_batch, multipliers, concept_labels)
 
 
 if __name__ == "__main__":
