@@ -6,12 +6,14 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+import torchvision.transforms
 from viscoin.models.classifiers import Classifier
 from viscoin.models.clip_adapter import ClipAdapter, ClipAdapterVAE
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.testing.clip_adapter import test_adapter
 from viscoin.training.losses import vae_reconstruction_loss
 from viscoin.utils.logging import get_logger
+from viscoin.models.gan import GeneratorAdapted
 
 
 @dataclass
@@ -40,6 +42,7 @@ def train_clip_adapter_cub(
     clip_adapter: ClipAdapter | ClipAdapterVAE,
     concept_extractor: ConceptExtractor,
     classifier: Classifier,
+    viscoin_gan: GeneratorAdapted,
     clip_model: CLIP,
     train_loader: DataLoader,
     test_loader: DataLoader,
@@ -66,6 +69,8 @@ def train_clip_adapter_cub(
     # Optimizer and scheduler
     optimizer = optim.Adam(clip_adapter.parameters(), lr=params.learning_rate)
 
+    resizer = torchvision.transforms.Resize((224, 224))
+
     for epoch in (progress := tqdm(range(1, params.epochs + 1), "Training epochs")):
         ###########################################################################################
         #                                      TRAINING STEP                                      #
@@ -86,14 +91,27 @@ def train_clip_adapter_cub(
 
             # Predicted clip embeddings
             _, hidden = classifier.forward(inputs)
-            concept_space, _ = concept_extractor.forward(hidden[-3:])
+            concept_space, extra_info = concept_extractor.forward(hidden[-3:])
 
+            # Compute the reconstructed images and their clip embeddings
+            rebuilt_images, gan_latents = viscoin_gan.forward(
+                z1=concept_space, z2=extra_info, return_latents=True
+            )
+
+            # Resize images to 224x224 to match CLIP input size
+            rebuilt_images = resizer(rebuilt_images)
+
+            rebuilt_images_clip_embeddings = clip_model.encode_image(rebuilt_images).float()
+
+            # Generate clip embeddings from concept embeddings
             output = clip_adapter(concept_space.view(-1, concept_extractor.n_concepts * 9))
 
             # Compute logits
             optimizer.zero_grad()
 
-            loss = params.train_criterion(output, clip_embeddings)
+            loss = params.train_criterion(output, clip_embeddings) + params.train_criterion(
+                output, rebuilt_images_clip_embeddings
+            )
 
             current_loss = loss.item()
 

@@ -222,6 +222,7 @@ def train(
                 clip_adapter,
                 viscoin.concept_extractor.to(device),
                 viscoin.classifier.to(device),
+                viscoin.gan.to(device),
                 clip_model,
                 train_loader,
                 test_loader,
@@ -665,8 +666,8 @@ def clip_concept_labels(
 @click.option(
     "--neurons-to-study",
     help="The indices of the neurons to study, if empty, 5 random neurons will be selected",
-    type=list[int],
-    default=[],  # Empty list means random neurons
+    type=str,
+    default="",  # Empty list means random neurons
 )
 def evalutate_concept_captions(
     expert_annotations_score_path: str,
@@ -681,6 +682,8 @@ def evalutate_concept_captions(
     """
     Evaluate the provided predictions of concept labels against cub expert annotations.
     """
+
+    neurons_to_study = [int(i) for i in neurons_to_study.split(",")] if neurons_to_study else []
 
     evaluate_concept_labels(
         expert_annotations_score_path,
@@ -759,6 +762,8 @@ def amplify_single(
     assert len(concept_indices) == len(
         image_indices
     ), "The number of concepts and images must be the same"
+
+    print("Selected image indices: ", image_indices)
 
     viscoin = load_viscoin_pickle(viscoin_pickle_path)
     dataset = CUB_200_2011(dataset_path, mode="test")
