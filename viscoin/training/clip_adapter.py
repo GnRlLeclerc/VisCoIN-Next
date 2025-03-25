@@ -11,7 +11,7 @@ from viscoin.models.classifiers import Classifier
 from viscoin.models.clip_adapter import ClipAdapter, ClipAdapterVAE
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.testing.clip_adapter import test_adapter
-from viscoin.training.losses import vae_reconstruction_loss
+from viscoin.training.losses import vae_reconstruction_loss, InfoNCE
 from viscoin.utils.logging import get_logger
 from viscoin.models.gan import GeneratorAdapted
 
@@ -38,7 +38,7 @@ class ClipAdapterVAETrainingParams:
         return nn.functional.mse_loss(output[0], clip_embedd)
 
 
-def train_clip_adapter_cub(
+def train_clip_adapter(
     clip_adapter: ClipAdapter | ClipAdapterVAE,
     concept_extractor: ConceptExtractor,
     classifier: Classifier,
@@ -70,6 +70,8 @@ def train_clip_adapter_cub(
     optimizer = optim.Adam(clip_adapter.parameters(), lr=params.learning_rate)
 
     resizer = torchvision.transforms.Resize((224, 224))
+
+    contrastive_criterion = InfoNCE()
 
     for epoch in (progress := tqdm(range(1, params.epochs + 1), "Training epochs")):
         ###########################################################################################
@@ -106,22 +108,31 @@ def train_clip_adapter_cub(
             # Generate clip embeddings from concept embeddings
             output = clip_adapter(concept_space.view(-1, concept_extractor.n_concepts * 9))
 
-            # Compute logits
             optimizer.zero_grad()
 
-            loss = params.train_criterion(output, clip_embeddings) + params.train_criterion(
-                output, rebuilt_images_clip_embeddings
-            )
+            # Computing the loss between the predicted clip embeddings and the real clip embeddings and the contrastive loss
+            embedding_loss = params.train_criterion(
+                output, clip_embeddings
+            ) + params.train_criterion(output, rebuilt_images_clip_embeddings)
+
+            contrastive_loss = contrastive_criterion(output, clip_embeddings)
+
+            loss = embedding_loss + contrastive_loss
 
             current_loss = loss.item()
 
             # Compute loss and backpropagate
             loss.backward()
+
             optimizer.step()
 
             # Update training metrics
             total_loss += current_loss
             total_samples += inputs.size(0)
+
+            progress.set_description_str(
+                f"Training epochs {total_samples}/{len(train_loader.dataset)}"
+            )
 
         # Append training metrics
         batch_mean_loss = total_loss / len(train_loader)

@@ -74,7 +74,7 @@ class TrainingParameters:
     gradient_accumulation = 1  # Step value of 1: no accumulation
 
 
-def train_viscoin_cub(
+def train_viscoin(
     # Models
     classifier: Classifier,
     concept_extractor: ConceptExtractor,
@@ -88,7 +88,7 @@ def train_viscoin_cub(
     params: TrainingParameters,
     device: str,
 ):
-    """Train the VisCoIN ensemble on the CUB dataset, using the parameters defined in the paper.
+    """Train the VisCoIN ensemble on the CUB or FunnyBirds dataset, using the parameters defined in the paper.
 
     Args:
         classifier: The classifier model to explain.

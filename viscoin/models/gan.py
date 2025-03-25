@@ -105,6 +105,32 @@ class GeneratorAdapted(torch.nn.Module):
             return img, ws
         return img
 
+    @classmethod
+    def from_gan(
+        cls,
+        gan: torch.nn.Module,
+        z_dim=256,  # Input latent (Z) dimensionality. for z1, z2
+        w_dim=512,  # Intermediate latent (W) dimensionality.
+        small_adjust=False,  # Small adjustment for a specific baseline model
+        mapping_kwargs=None,  # Arguments for MappingNetwork.
+    ) -> "GeneratorAdapted":
+        """
+        Returns an GAN model adapted for VisCoIN from a StyleGAN model.
+        """
+
+        assert gan.synthesis is not None, "The provided GAN is not a valid StyleGAN model"
+
+        model = cls(
+            z_dim=z_dim,
+            w_dim=w_dim,
+            small_adjust=small_adjust,
+            mapping_kwargs=mapping_kwargs,
+        )
+
+        model.synthesis = gan.synthesis
+
+        return model
+
 
 class MappingNetworkAdapted(torch.nn.Module):
     """Mapping network adapted for VisCoIN"""

@@ -18,7 +18,7 @@ from viscoin.testing.classifiers import test_classifier
 from viscoin.utils.logging import get_logger
 
 
-def train_classifier_cub(
+def train_classifier(
     model: Classifier,
     train_loader: DataLoader,
     test_loader: DataLoader,
@@ -26,7 +26,7 @@ def train_classifier_cub(
     epochs: int = 30,
     learning_rate: float = 0.0001,
 ):
-    """Train the classifier model for the CUB dataset. The best model on testing data is loaded into the classifier instance.
+    """Train the classifier model for the CUB or FunnyBirds dataset. The best model on testing data is loaded into the classifier instance.
 
     Note: the losses are averaged over batches.
 

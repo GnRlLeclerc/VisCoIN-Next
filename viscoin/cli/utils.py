@@ -78,3 +78,12 @@ def vocab_path(func):
         required=True,
         type=str,
     )(func)
+
+
+def dataset_type(func):
+    return click.option(
+        "--dataset-type",
+        help="The type of dataset to use for training/testing",
+        default="cub",
+        type=click.Choice(["cub", "funnybirds"]),
+    )(func)
