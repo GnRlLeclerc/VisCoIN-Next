@@ -259,7 +259,7 @@ def load_classifier(path: str, n_classes: int) -> Classifier:
         return torch.load(path, weights_only=False)
 
 
-def load_gan(path_generator_gan: str, path_viscoin_gan: str) -> tuple[GeneratorAdapted, Generator]:
+def load_gan(path_viscoin_gan: str, path_generator_gan: str) -> tuple[GeneratorAdapted, Generator]:
     # Generator GAN must be provided
     assert os.path.exists(path_generator_gan), f"Generator GAN not found."
 
@@ -288,7 +288,7 @@ def setup_viscoin_training(
     """Helper function to setup the training of viscoin"""
 
     concept_extractor = ConceptExtractor().to(device)
-    explainer = Explainer().to(device)
+    explainer = Explainer(n_classes=DATASET_CLASSES[dataset_type]).to(device)
 
     classifier = load_classifier(
         DEFAULT_CHECKPOINTS[dataset_type]["classifier"], DATASET_CLASSES[dataset_type]
