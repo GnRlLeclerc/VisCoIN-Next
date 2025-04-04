@@ -4,10 +4,10 @@ import random
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from viscoin.datasets.cub import CUB_200_2011
+from viscoin.datasets.cub import CUB_200_2011, Labeled_CUB_200_2011
 from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.models.utils import load_viscoin_pickle
@@ -62,7 +62,7 @@ class ViscoinWrapper(torch.nn.Module):
         Args:
             x (Tensor): Image tensor of shape (B, 3, 224, 224)
         """
-        classes, hidden = self.classifier.forward(x)
+        _, hidden = self.classifier.forward(x)
         concept_space, gan_helper_space = self.concept_extractor.forward(hidden[-3:])
 
         # Concept Space is orginally of shape (B, n_concepts * 9), we convert it to (B, n_concepts, 9)
@@ -104,7 +104,7 @@ def get_activations(
     hook = target_model.identity.register_forward_hook(hook_function)
 
     with torch.no_grad():
-        for images, labels in tqdm(DataLoader(dataset, BATCH_SIZE, num_workers=8, pin_memory=True)):
+        for images, _ in tqdm(DataLoader(dataset, BATCH_SIZE, num_workers=8, pin_memory=True)):
             _, _ = target_model(images.to(device))
 
     hook.remove()
@@ -255,7 +255,6 @@ def study_neurons(
 def evaluate_concept_labels(
     expert_annotations_score_path: str,
     viscoin_pkl_path: str,
-    dataset_path: str,
     concept_labels_path: str,
     device: str,
     evaluation_method: str = "topk",
@@ -273,7 +272,7 @@ def evaluate_concept_labels(
     """
 
     viscoin = load_viscoin_pickle(viscoin_pkl_path)
-    dataset = CUB_200_2011(dataset_path, mode="test")
+    dataset = Labeled_CUB_200_2011(mode="test")
 
     if not os.path.isfile(expert_annotations_score_path):
 

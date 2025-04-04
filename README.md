@@ -12,7 +12,7 @@ Implementation of Vision Concept-based Interpretable Networks. [See the paper](h
 
 This project uses the [Black](https://github.com/psf/black) python formatter. Imports are sorted using [isort](https://pycqa.github.io/isort/).
 
-Download the CUB dataset [here](https://www.kaggle.com/datasets/wenewone/cub2002011).
+Datasets will be downloaded automatically. Change the `KAGGLEHUB_CACHE` environment variable to specify where to download the datasets. Custom-downloaded datasets are stored under the name `viscoin`.
 
 See also (used in this repository):
 

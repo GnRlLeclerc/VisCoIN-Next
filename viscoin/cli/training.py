@@ -6,7 +6,7 @@ import clip
 import torch
 from torch.utils.data import DataLoader
 
-from viscoin.cli.utils import batch_size, dataset_path, dataset_type, device
+from viscoin.cli.utils import batch_size, dataset_type, device
 from viscoin.datasets.cub import CUB_200_2011
 from viscoin.datasets.funnybirds import FunnyBirds
 from viscoin.models.classifiers import Classifier
@@ -46,7 +46,6 @@ DATASET_CLASSES = {
 @click.command()
 @batch_size
 @device
-@dataset_path
 @dataset_type
 @click.argument("model_name")
 @click.option(
@@ -78,7 +77,6 @@ def train(
     model_name: str,
     batch_size: int,
     device: str,
-    dataset_path: str,
     dataset_type: str,
     checkpoints: str | None,
     epochs: int,
@@ -94,11 +92,11 @@ def train(
 
     match dataset_type:
         case "cub":
-            train_dataset = CUB_200_2011(dataset_path, mode="train")
-            test_dataset = CUB_200_2011(dataset_path, mode="test")
+            train_dataset = CUB_200_2011(mode="train")
+            test_dataset = CUB_200_2011(mode="test")
         case "funnybirds":
-            train_dataset = FunnyBirds(dataset_path, mode="train")
-            test_dataset = FunnyBirds(dataset_path, mode="test")
+            train_dataset = FunnyBirds(mode="train")
+            test_dataset = FunnyBirds(mode="test")
         case _:
             raise ValueError(f"Unknown dataset type: {dataset_type}")
 
@@ -134,7 +132,6 @@ def train(
             setup_clip_adapter_training(
                 model_name,
                 device,
-                dataset_path,
                 dataset_type,
                 epochs,
                 learning_rate,
@@ -181,7 +178,6 @@ def setup_classifier_training(
 def setup_clip_adapter_training(
     model_type: str,
     device: str,
-    dataset_path: str,
     dataset_type: str,
     epochs: int,
     learning_rate: float,
@@ -211,11 +207,11 @@ def setup_clip_adapter_training(
     # Creating new dataloader with the clip preprocess as clip does not work with all image sizes
     match dataset_type:
         case "cub":
-            train_dataset = CUB_200_2011(dataset_path, mode="train", transform=preprocess)
-            test_dataset = CUB_200_2011(dataset_path, mode="test", transform=preprocess)
+            train_dataset = CUB_200_2011(mode="train", transform=preprocess)
+            test_dataset = CUB_200_2011(mode="test", transform=preprocess)
         case "funnybirds":
-            train_dataset = FunnyBirds(dataset_path, mode="train", transform=preprocess)
-            test_dataset = FunnyBirds(dataset_path, mode="test", transform=preprocess)
+            train_dataset = FunnyBirds(mode="train", transform=preprocess)
+            test_dataset = FunnyBirds(mode="test", transform=preprocess)
         case _:
             raise ValueError(f"Unknown dataset type: {dataset_type}")
 
@@ -312,7 +308,6 @@ def setup_viscoin_training(
 @click.command()
 @batch_size
 @device
-@dataset_path
 @dataset_type
 @click.argument("model_name")
 @click.option("--checkpoints", help="The path to load the checkpoints", type=str)
@@ -320,7 +315,6 @@ def test(
     model_name: str,
     batch_size: int,
     device: str,
-    dataset_path: str,
     dataset_type: str,
     checkpoints: str | None,
 ):
@@ -328,9 +322,9 @@ def test(
 
     match dataset_type:
         case "cub":
-            dataset = CUB_200_2011(dataset_path, mode="test")
+            dataset = CUB_200_2011(mode="test")
         case "funnybirds":
-            dataset = FunnyBirds(dataset_path, mode="test")
+            dataset = FunnyBirds(mode="test")
         case _:
             raise ValueError(f"Unknown dataset type: {dataset_type}")
 
@@ -347,8 +341,6 @@ def test(
 
     if pretrained:
         model.load_state_dict(torch.load(checkpoints, weights_only=True))
-
-    # TODO : if viscoin, specific stuff has to be done to ensure the model parameters are compatible
 
     model = model.to(device)
 

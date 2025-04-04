@@ -10,6 +10,7 @@ We do not load the parts annotations.
 
 import os
 
+import kagglehub
 import numpy as np
 import torch
 from PIL import Image
@@ -31,7 +32,6 @@ class CUB_200_2011(Dataset):
 
     def __init__(
         self,
-        dataset_path="datasets/CUB_200_2011/",
         mode: Mode = "train",
         image_shape: tuple[int, int] = (256, 256),
         bbox_only=False,
@@ -47,9 +47,9 @@ class CUB_200_2011(Dataset):
             transform: Additional optional transformations to perform on loaded images. Will default to the appropriate one given the mode.
         """
 
-        assert os.path.exists(dataset_path), f'Dataset path "{dataset_path}" not found.'
-
-        self.dataset_path = dataset_path
+        self.dataset_path = os.path.join(
+            kagglehub.dataset_download("wenewone/cub2002011", "CUB_200_2011")
+        )
         self.mode: Mode = mode
         self.image_shape = image_shape
         self.bbox_only = bbox_only
@@ -151,9 +151,8 @@ class CUB_200_2011(Dataset):
         # Apply the transformations
         tensor_image = self.transform(image)
 
-        assert type(tensor_image) == Tensor, "Image is not a tensor"
-
-        return tensor_image
+        # NOTE: actually returns a torchvision.tv_tensors._image.Image
+        return tensor_image  # type: ignore
 
     def __len__(self):
         """Returns the length of the dataset (depends on the test/train mode)."""
@@ -189,7 +188,6 @@ class Labeled_CUB_200_2011(CUB_200_2011):
 
     def __init__(
         self,
-        dataset_path="datasets/CUB_200_2011/",
         attributes_per_label: int = 3,
         mode: Mode = "train",
         image_shape: tuple[int, int] = (256, 256),
@@ -206,7 +204,7 @@ class Labeled_CUB_200_2011(CUB_200_2011):
             transform: Additional optional transformations to perform on loaded images. Will default to the appropriate one given the mode.
         """
 
-        super().__init__(dataset_path, mode, image_shape, bbox_only, transform)
+        super().__init__(mode, image_shape, bbox_only, transform)
 
         self.attributes_per_label = attributes_per_label
 

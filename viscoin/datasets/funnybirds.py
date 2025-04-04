@@ -13,9 +13,12 @@ from torchvision.transforms import (
 from torchvision.transforms.v2 import Compose as ComposeV2
 
 from viscoin.datasets.transforms import RESNET_TEST_TRANSFORM, RESNET_TRAIN_TRANSFORM
+from viscoin.datasets.utils import dataset_exists, dataset_path, download
 from viscoin.utils.types import Mode
 
 Compose = ComposeV1 | ComposeV2
+
+DATASET_NAME = "FunnyBirds"
 
 
 class FunnyBirds(Dataset):
@@ -23,7 +26,6 @@ class FunnyBirds(Dataset):
 
     def __init__(
         self,
-        dataset_path="datasets/FunnyBirds",
         mode: Mode = "train",
         image_shape: tuple[int, int] = (256, 256),
         transform: Compose | None = None,
@@ -38,9 +40,12 @@ class FunnyBirds(Dataset):
             transform: Additional optional transformations to perform on loaded images. Will default to the appropriate one given the mode.
         """
 
-        assert os.path.exists(dataset_path), f'Dataset path "{dataset_path}" not found.'
+        if not dataset_exists(DATASET_NAME):
+            download(
+                "https://download.visinf.tu-darmstadt.de/data/funnybirds/FunnyBirds.zip",
+            )
 
-        self.dataset_path = dataset_path
+        self.dataset_path = dataset_path(DATASET_NAME)
         self.mode: Mode = mode
         self.image_shape = image_shape
 
@@ -59,7 +64,7 @@ class FunnyBirds(Dataset):
         self.labels = []
 
         # Select the appropriate data folder
-        data_folder = os.path.join(dataset_path, mode)
+        data_folder = os.path.join(self.dataset_path, mode)
 
         # Loop through the subfolders
         for folder in os.listdir(data_folder):
@@ -83,9 +88,8 @@ class FunnyBirds(Dataset):
         # Apply the transformations
         tensor_image = self.transform(image)
 
-        assert type(tensor_image) == Tensor, "The image is not a tensor."
-
-        return tensor_image
+        # NOTE: actually returns a torchvision.tv_tensors._image.Image
+        return tensor_image  # type: ignore
 
     def __len__(self):
         """Returns the length of the dataset (depends on the test/train mode)."""

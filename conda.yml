@@ -26,3 +26,4 @@ dependencies:
   - click
   - matplotlib
   - ninja # Required to build custom StyleGAN plugins
+  - kagglehub

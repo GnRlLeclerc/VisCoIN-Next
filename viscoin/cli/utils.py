@@ -24,16 +24,6 @@ def device(func):
     )(func)
 
 
-def dataset_path(func):
-    return click.option(
-        "--dataset-path",
-        help="The path to the dataset to use for training/testing",
-        default="./datasets/CUB_200_2011/",
-        required=True,
-        type=str,
-    )(func)
-
-
 def epochs(func):
     return click.option(
         "--epochs",

@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from viscoin.cli.utils import batch_size, dataset_path, device, viscoin_pickle_path
+from viscoin.cli.utils import batch_size, device, viscoin_pickle_path
 from viscoin.datasets.cub import CUB_200_2011
 from viscoin.models.utils import load_viscoin_pickle
 from viscoin.testing.concepts import test_concepts
@@ -29,7 +29,6 @@ from viscoin.utils.types import TestingResults, TrainingResults
 
 
 @click.command()
-@dataset_path
 @viscoin_pickle_path
 @device
 @click.option(
@@ -43,7 +42,6 @@ from viscoin.utils.types import TestingResults, TrainingResults
     type=int,
 )
 def amplify(
-    dataset_path: str,
     viscoin_pickle_path: str,
     concept_threshold: float | None,
     concept_top_k: int | None,
@@ -54,7 +52,7 @@ def amplify(
 
     # Load dataset and models
     models = load_viscoin_pickle(viscoin_pickle_path)
-    dataset = CUB_200_2011(dataset_path, mode="test")
+    dataset = CUB_200_2011(mode="test")
 
     # Move models to device
     classifier = models.classifier.to(device)
@@ -98,7 +96,6 @@ def amplify(
 
 
 @click.command()
-@dataset_path
 @viscoin_pickle_path
 @batch_size
 @device
@@ -108,7 +105,6 @@ def amplify(
     is_flag=True,
 )
 def concepts(
-    dataset_path: str,
     viscoin_pickle_path: str,
     batch_size: int,
     force: bool,
@@ -119,7 +115,7 @@ def concepts(
     if force or not os.path.isfile("concept_results.pkl"):
         # Recompute the concept results
 
-        dataset = CUB_200_2011(dataset_path, mode="test")
+        dataset = CUB_200_2011(mode="test")
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
         viscoin = load_viscoin_pickle(viscoin_pickle_path)
@@ -176,10 +172,9 @@ def logs(logs_path: str):
 
 
 @click.command()
-@dataset_path
 @viscoin_pickle_path
 @device
-def concept_heatmaps(dataset_path: str, viscoin_pickle_path: str, device: str):
+def concept_heatmaps(viscoin_pickle_path: str, device: str):
     """Generate heatmaps for random images of the dataset, for the 5 convolutional layers of the concept extractor,
     using GradCAM."""
 
@@ -187,7 +182,7 @@ def concept_heatmaps(dataset_path: str, viscoin_pickle_path: str, device: str):
 
     # Load dataset and models
     models = load_viscoin_pickle(viscoin_pickle_path)
-    dataset = CUB_200_2011(dataset_path, mode="test")
+    dataset = CUB_200_2011(mode="test")
 
     # Move models to device
     classifier = models.classifier.to(device)
@@ -272,7 +267,6 @@ def concept_heatmaps(dataset_path: str, viscoin_pickle_path: str, device: str):
 
 @click.command()
 @viscoin_pickle_path
-@dataset_path
 @click.option(
     "--concept-labels-path",
     help="The path to the concept labels file",
@@ -291,7 +285,6 @@ def concept_heatmaps(dataset_path: str, viscoin_pickle_path: str, device: str):
 @device
 def amplify_single(
     viscoin_pickle_path: str,
-    dataset_path: str,
     concept_labels_path: str,
     concept_indices: str,
     image_indices: str,
@@ -335,7 +328,7 @@ def amplify_single(
     print("Selected image indices: ", image_indices_ints)
 
     viscoin = load_viscoin_pickle(viscoin_pickle_path)
-    dataset = CUB_200_2011(dataset_path, mode="test")
+    dataset = CUB_200_2011(mode="test")
 
     images_batch: list[Tensor] = []
     amplified_images_batch: list[list[Tensor]] = []

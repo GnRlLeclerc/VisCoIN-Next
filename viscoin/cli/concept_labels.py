@@ -3,13 +3,7 @@ import clip
 import numpy as np
 import torch
 
-from viscoin.cli.utils import (
-    clip_adapter_path,
-    dataset_path,
-    device,
-    viscoin_pickle_path,
-    vocab_path,
-)
+from viscoin.cli.utils import clip_adapter_path, device, viscoin_pickle_path, vocab_path
 from viscoin.datasets.cub import CUB_200_2011
 from viscoin.models.utils import load_viscoin_pickle
 from viscoin.testing.concept2clip import get_concept_labels_vocab
@@ -26,7 +20,6 @@ from viscoin.testing.concept_label_metric import evaluate_concept_labels
     type=int,
     default=256,
 )
-@dataset_path
 @click.option(
     "--amplify-multiplier",
     help="The multiplier to amplify to the concept",
@@ -51,7 +44,6 @@ def clip_concept_labels(
     vocab_path: str,
     viscoin_pickle_path: str,
     n_concepts: int,
-    dataset_path: str,
     amplify_multiplier: float,
     selection_n: int,
     output_path: str,
@@ -93,7 +85,7 @@ def clip_concept_labels(
     vocab = [v.strip() for v in vocab]
 
     # Load the dataset
-    dataset = CUB_200_2011(dataset_path, mode="test")
+    dataset = CUB_200_2011(mode="test")
 
     concept_labels, probs, most_activating_images = get_concept_labels_vocab(
         clip_adapter,
@@ -134,7 +126,6 @@ def clip_concept_labels(
     type=str,
     required=True,
 )
-@dataset_path
 @device
 @click.option(
     "--evaluation-method",
@@ -158,7 +149,6 @@ def evalutate_concept_captions(
     expert_annotations_score_path: str,
     viscoin_pickle_path: str,
     concept_labels_path: str,
-    dataset_path: str,
     device: str,
     evaluation_method: str,
     topk_value: int,
@@ -175,7 +165,6 @@ def evalutate_concept_captions(
     evaluate_concept_labels(
         expert_annotations_score_path,
         viscoin_pickle_path,
-        dataset_path,
         concept_labels_path,
         device,
         evaluation_method,
