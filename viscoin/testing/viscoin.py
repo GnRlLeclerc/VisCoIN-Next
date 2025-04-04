@@ -236,7 +236,8 @@ def amplify_concepts(
     # Compute the concept intensities (for each concept, max of the 3x3 embedding map, and then normalize by the max)
     # (n_concepts)
     concept_pooling = F.adaptive_max_pool2d(concept_embeddings.squeeze(0), 1).squeeze()
-    concept_intensities = concept_pooling * expl_weights[class_pred].squeeze()  # (n_concepts)
+    # (n_concepts)
+    concept_intensities = concept_pooling * expl_weights[class_pred].squeeze()  # type: ignore
     concept_intensities /= concept_intensities.abs().max()  # (n_concepts) in [-1, 1]
 
     # Get the concept index whose intensity is above the threshold
