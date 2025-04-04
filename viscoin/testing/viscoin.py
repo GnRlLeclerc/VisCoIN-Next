@@ -345,7 +345,7 @@ def plot_amplified_images_batch(
     originals: list[Tensor],
     images: list[list[Tensor]],
     multipliers: list[float],
-    labels: list[str] = None,
+    labels: list[str] | None = None,
 ):
     """Plot amplified images in a row, with their corresponding multiplier in the title.
     This function can plot multiple rows."""

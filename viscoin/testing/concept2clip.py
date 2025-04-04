@@ -1,21 +1,23 @@
 """Classifiers testing functions"""
 
 import clip
+import numpy as np
 import torch
 from clip.model import CLIP
 from torch import nn
+from torch.types import Number
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from viscoin.datasets.cub import CUB_200_2011
 from viscoin.models.classifiers import Classifier
-from viscoin.models.clip_adapter import ClipAdapter, ClipAdapterVAE
+from viscoin.models.concept2clip import Concept2CLIP
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.utils.metrics import cosine_matching
-from viscoin.datasets.cub import CUB_200_2011
 
 
 def test_adapter(
-    clip_adapter: ClipAdapter | ClipAdapterVAE,
+    clip_adapter: Concept2CLIP,
     classifier: Classifier,
     concept_extractor: ConceptExtractor,
     clip_model: CLIP,
@@ -72,17 +74,17 @@ def test_adapter(
 
 
 def get_concept_labels_vocab(
-    clip_adapter: ClipAdapter,
+    clip_adapter: Concept2CLIP,
     concept_extractor: ConceptExtractor,
     classifier: Classifier,
     clip_model: CLIP,
     vocab: list[str],
     n_concepts: int,
     dataset: CUB_200_2011,
-    multiplier: int,
+    multiplier: float,
     selection_n: int,
     device: str,
-) -> tuple[list[str], list[torch.Tensor]]:
+) -> tuple[list[str], list[Number], np.ndarray]:
     """Retrieve concept labels for VisCoIN concepts from CLIP embeddings
 
     Args:
@@ -143,7 +145,7 @@ def get_concept_labels_vocab(
 
             for i, image_idx in enumerate(selected_indices):
 
-                image = dataset[image_idx][0].to(device)
+                image = dataset[int(image_idx.item())][0].to(device)
                 original_concept = image_concepts[image_idx]
 
                 # Compute original CLIP embedding
@@ -176,11 +178,12 @@ def get_concept_labels_vocab(
             )
 
     # Step 5: Get top vocab words
-    concept_labels = []
-    probs = []
+    concept_labels: list[str] = []
+    # TODO : type à vérif, ptet call item() pour avoir un Number
+    probs: list[Number] = []
     for concept_idx in range(n_concepts):
         top_idx = torch.argmax(mean_concept_label_similarity[concept_idx])
         concept_labels.append(vocab[top_idx])
-        probs.append(mean_concept_label_similarity[concept_idx, top_idx])
+        probs.append(mean_concept_label_similarity[concept_idx, top_idx].item())
 
     return concept_labels, probs, most_activating_images_per_concept.cpu().numpy()

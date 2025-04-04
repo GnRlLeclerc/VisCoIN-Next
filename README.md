@@ -28,6 +28,8 @@ Structure of the `viscoin` folder.
 ```bash
 ├── ../stylegan2_ada  # Pytorch implementation of StyleGAN2 ADA
 │
+├── cli            # Command line functions
+│
 ├── datasets       # Pytorch dataloaders for every dataset
 │   ├── cub                 # CUB dataset loader
 │   └── transforms          # Standard dataset preprocessing transformations

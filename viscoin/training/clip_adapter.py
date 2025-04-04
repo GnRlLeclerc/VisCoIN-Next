@@ -1,19 +1,19 @@
 from dataclasses import dataclass
 
 import torch
+import torchvision.transforms
 from clip.model import CLIP
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-import torchvision.transforms
 from viscoin.models.classifiers import Classifier
-from viscoin.models.clip_adapter import ClipAdapter, ClipAdapterVAE
+from viscoin.models.concept2clip import Concept2CLIP
 from viscoin.models.concept_extractors import ConceptExtractor
-from viscoin.testing.clip_adapter import test_adapter
-from viscoin.training.losses import vae_reconstruction_loss, InfoNCE
-from viscoin.utils.logging import get_logger
 from viscoin.models.gan import GeneratorAdapted
+from viscoin.testing.concept2clip import test_adapter
+from viscoin.training.losses import InfoNCE
+from viscoin.utils.logging import get_logger
 
 
 @dataclass
@@ -25,21 +25,8 @@ class ClipAdapterTrainingParams:
     test_criterion = nn.MSELoss()
 
 
-@dataclass
-class ClipAdapterVAETrainingParams:
-    epochs: int = 30
-    learning_rate: float = 1e-5
-
-    # output = (reconstruction, mu, logvar)
-    def train_criterion(self, output, clip_embedd):
-        return vae_reconstruction_loss(output[0], clip_embedd, output[1], output[2])
-
-    def test_criterion(self, output, clip_embedd):
-        return nn.functional.mse_loss(output[0], clip_embedd)
-
-
 def train_clip_adapter(
-    clip_adapter: ClipAdapter | ClipAdapterVAE,
+    clip_adapter: Concept2CLIP,
     concept_extractor: ConceptExtractor,
     classifier: Classifier,
     viscoin_gan: GeneratorAdapted,
@@ -47,7 +34,7 @@ def train_clip_adapter(
     train_loader: DataLoader,
     test_loader: DataLoader,
     device: str,
-    params: ClipAdapterTrainingParams | ClipAdapterVAETrainingParams,
+    params: ClipAdapterTrainingParams,
 ):
     """Train the adapter to convert concept embeddings to clip embeddings.
 
@@ -96,7 +83,7 @@ def train_clip_adapter(
             concept_space, extra_info = concept_extractor.forward(hidden[-3:])
 
             # Compute the reconstructed images and their clip embeddings
-            rebuilt_images, gan_latents = viscoin_gan.forward(
+            rebuilt_images, _ = viscoin_gan.forward(
                 z1=concept_space, z2=extra_info, return_latents=True
             )
 
@@ -131,7 +118,7 @@ def train_clip_adapter(
             total_samples += inputs.size(0)
 
             progress.set_description_str(
-                f"Training epochs {total_samples}/{len(train_loader.dataset)}"
+                f"Training epochs {total_samples}/{len(train_loader.dataset)}"  # type: ignore
             )
 
         # Append training metrics

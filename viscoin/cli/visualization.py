@@ -1,23 +1,21 @@
-import click
 import os
 import pickle
-import numpy.random as rd
-import torch
-import torch.nn.functional as F
-import matplotlib.pyplot as plt
-
-import pandas as pd
-import numpy as np
-
 import random
 
+import click
+import matplotlib.pyplot as plt
+import numpy as np
+import numpy.random as rd
+import pandas as pd
+import torch
+import torch.nn.functional as F
 from torch import Tensor
 from torch.utils.data import DataLoader
 
+from viscoin.cli.utils import batch_size, dataset_path, device, viscoin_pickle_path
 from viscoin.datasets.cub import CUB_200_2011
 from viscoin.models.utils import load_viscoin_pickle
 from viscoin.testing.concepts import test_concepts
-
 from viscoin.testing.viscoin import (
     ThresholdSelection,
     TopKSelection,
@@ -25,14 +23,6 @@ from viscoin.testing.viscoin import (
     amplify_single_concepts,
     plot_amplified_images_batch,
 )
-
-from viscoin.cli.utils import (
-    batch_size,
-    dataset_path,
-    device,
-    viscoin_pickle_path,
-)
-
 from viscoin.utils.gradcam import GradCAM
 from viscoin.utils.images import from_torch, heatmap_to_img, overlay
 from viscoin.utils.types import TestingResults, TrainingResults
@@ -303,59 +293,55 @@ def amplify_single(
     viscoin_pickle_path: str,
     dataset_path: str,
     concept_labels_path: str,
-    concept_indices: list[int],
-    image_indices: list[int],
+    concept_indices: str,
+    image_indices: str,
     device: str,
 ):
-    """Similar to amplify, but instead of amplifying multiple concepts for a given image, we amplify only a single concept per image.
-
-    Args:
-        viscoin_pickle_path (str): _description_
-        dataset_path (str): _description_
-        concept_labels_path (str): _description_
-        concept_indices (list[int]): _description_
-        image_indices (list[int]): _description_
-        device (str): _description_
-    """
-    concept_labels = []
+    """Similar to amplify, but instead of amplifying multiple concepts for a given image, we amplify only a single concept per image."""
+    concept_labels: list[str] = []
 
     if concept_indices == "random":
-        concept_indices = random.sample(range(0, 256), 5)
+        concept_indices_ints = random.sample(range(0, 256), 5)
     else:
-        concept_indices = [int(i) for i in concept_indices.split(",")]
+        concept_indices_ints = [int(i) for i in concept_indices.split(",")]
 
     # If a path to the concept labels file is provided, we load the concept labels and the most activating images
+    saved_image_indices = None
     if concept_labels_path:
         concept_labels_df = pd.read_csv(concept_labels_path)
 
-        concept_labels = concept_labels_df["description"].values[concept_indices]
+        concept_labels = list(concept_labels_df["description"].values[concept_indices_ints])
+
         # Retrieve the most activating images for the selected concepts
-        saved_image_indices = concept_labels_df["most-activating-images"].values[concept_indices]
+        saved_image_indices = concept_labels_df["most-activating-images"].values[
+            concept_indices_ints
+        ]
         saved_image_indices = [int(l.split(":")[random.randint(0, 5)]) for l in saved_image_indices]
 
     # Either use the provided image indices or the ones given in the concept labels file
     if image_indices:
-        image_indices = [int(i) for i in image_indices.split(",")]
+        image_indices_ints = [int(i) for i in image_indices.split(",")]
+    elif saved_image_indices is not None:
+        image_indices_ints = saved_image_indices
     else:
-        assert (
-            concept_labels_path
-        ), "You must provide the concept labels file if you do not provide the image indices"
-        image_indices = saved_image_indices
+        raise ValueError(
+            "You must provide the concept labels file if you do not provide the image indices"
+        )
 
-    assert len(concept_indices) == len(
+    assert len(concept_indices_ints) == len(
         image_indices
     ), "The number of concepts and images must be the same"
 
-    print("Selected image indices: ", image_indices)
+    print("Selected image indices: ", image_indices_ints)
 
     viscoin = load_viscoin_pickle(viscoin_pickle_path)
     dataset = CUB_200_2011(dataset_path, mode="test")
 
-    images_batch = []
-    amplified_images_batch = []
+    images_batch: list[Tensor] = []
+    amplified_images_batch: list[list[Tensor]] = []
     multipliers = [0.0, 1.0, 2.0, 4.0]
 
-    for i, image_idx in enumerate(image_indices):
+    for i, image_idx in enumerate(image_indices_ints):
         image = dataset[image_idx][0].to(device)
 
         amplified_images = amplify_single_concepts(
@@ -363,7 +349,7 @@ def amplify_single(
             viscoin.gan.to(device),
             viscoin.classifier.to(device),
             viscoin.concept_extractor.to(device),
-            concept_indices[i],
+            concept_indices_ints[i],
             multipliers,
         )
 

@@ -1,36 +1,28 @@
-import click
-import torch
-import clip
 import os
 import sys
+
+import click
+import clip
+import torch
 from torch.utils.data import DataLoader
 
-from viscoin.cli.utils import batch_size, dataset_path, device, dataset_type
-from viscoin.models.utils import load_viscoin, load_viscoin_pickle, save_viscoin_pickle
-from viscoin.testing.classifiers import test_classifier
-
-from viscoin.training.classifiers import train_classifier
-from viscoin.training.viscoin import TrainingParameters, train_viscoin
-from viscoin.training.clip_adapter import (
-    train_clip_adapter,
-    ClipAdapterTrainingParams,
-    ClipAdapterVAETrainingParams,
-)
-
+from viscoin.cli.utils import batch_size, dataset_path, dataset_type, device
 from viscoin.datasets.cub import CUB_200_2011
 from viscoin.datasets.funnybirds import FunnyBirds
 from viscoin.models.classifiers import Classifier
+from viscoin.models.concept2clip import Concept2CLIP
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.models.explainers import Explainer
 from viscoin.models.gan import GeneratorAdapted
-from viscoin.models.clip_adapter import ClipAdapter, ClipAdapterVAE
-
+from viscoin.models.utils import load_viscoin, load_viscoin_pickle, save_viscoin_pickle
+from viscoin.testing.classifiers import test_classifier
+from viscoin.training.classifiers import train_classifier
+from viscoin.training.clip_adapter import ClipAdapterTrainingParams, train_clip_adapter
+from viscoin.training.viscoin import TrainingParameters, train_viscoin
 from viscoin.utils.logging import configure_score_logging
-from viscoin.utils.types import TestingResults, TrainingResults
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "stylegan2_ada"))
 from stylegan2_ada.training.networks import Generator
-
 
 DEFAULT_CHECKPOINTS = {
     "cub": {
@@ -113,12 +105,11 @@ def train(
     batch_size = batch_size // gradient_accumulation_steps
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-    pretrained = checkpoints is not None
 
     match model_name:
         case "classifier":
+            # TODO : bad type, corriger ça aussi...
             setup_classifier_training(
-                pretrained,
                 checkpoints,
                 device,
                 train_loader,
@@ -130,7 +121,6 @@ def train(
 
         case "viscoin":
             setup_viscoin_training(
-                pretrained,
                 checkpoints,
                 dataset_type,
                 device,
@@ -157,8 +147,7 @@ def train(
 
 
 def setup_classifier_training(
-    pretrained: bool,
-    checkpoints: str,
+    checkpoints: str | None,
     device: str,
     train_loader: DataLoader,
     test_loader: DataLoader,
@@ -168,9 +157,9 @@ def setup_classifier_training(
 ):
     """Helper function to setup the training of a classifier"""
 
-    model = Classifier(output_classes=200, pretrained=pretrained).to(device)
+    model = Classifier(output_classes=200, pretrained=checkpoints is None).to(device)
 
-    if pretrained:
+    if checkpoints is not None:
         model.load_state_dict(torch.load(checkpoints, weights_only=True))
 
     model = model.to(device)
@@ -210,13 +199,10 @@ def setup_clip_adapter_training(
     clip_embedding_dim = clip_model.visual.output_dim
 
     if model_type == "clip_adapter":
-        clip_adapter = ClipAdapter(n_concepts * 9, clip_embedding_dim)
+        clip_adapter = Concept2CLIP(n_concepts * 9, clip_embedding_dim)
         params = ClipAdapterTrainingParams(epochs=epochs, learning_rate=learning_rate)
-    elif model_type == "clip_adapter_vae":
-        clip_adapter = ClipAdapterVAE(
-            n_concepts * 9, clip_embedding_dim, hidden_size=512, latent_size=128
-        )
-        params = ClipAdapterVAETrainingParams(epochs=epochs, learning_rate=learning_rate)
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")
 
     clip_adapter = clip_adapter.to(device)
 
@@ -276,8 +262,7 @@ def load_gan(path_viscoin_gan: str, path_generator_gan: str) -> tuple[GeneratorA
 
 
 def setup_viscoin_training(
-    pretrained: bool,
-    checkpoints: str,
+    checkpoints: str | None,
     dataset_type: str,
     device: str,
     train_loader: DataLoader,
@@ -301,7 +286,7 @@ def setup_viscoin_training(
     viscoin_gan = viscoin_gan.to(device)
     generator_gan = generator_gan.to(device)
 
-    if pretrained:
+    if checkpoints is not None:
         load_viscoin(classifier, concept_extractor, explainer, viscoin_gan, checkpoints)
 
     configure_score_logging(f"viscoin_{epochs}.log")

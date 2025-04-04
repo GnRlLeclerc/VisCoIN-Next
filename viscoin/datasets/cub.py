@@ -15,10 +15,15 @@ import torch
 from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
-from torchvision.transforms.v2 import Compose
+from torchvision.transforms import (
+    Compose as ComposeV1,  # for the CLIP model that uses legacy compose
+)
+from torchvision.transforms.v2 import Compose as ComposeV2
 
 from viscoin.datasets.transforms import RESNET_TEST_TRANSFORM, RESNET_TRAIN_TRANSFORM
 from viscoin.utils.types import Mode
+
+Compose = ComposeV1 | ComposeV2
 
 
 class CUB_200_2011(Dataset):
@@ -145,6 +150,8 @@ class CUB_200_2011(Dataset):
 
         # Apply the transformations
         tensor_image = self.transform(image)
+
+        assert type(tensor_image) == Tensor, "Image is not a tensor"
 
         return tensor_image
 

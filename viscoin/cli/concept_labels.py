@@ -1,20 +1,18 @@
 import click
-import torch
-import numpy as np
 import clip
+import numpy as np
+import torch
 
 from viscoin.cli.utils import (
+    clip_adapter_path,
     dataset_path,
     device,
     viscoin_pickle_path,
-    clip_adapter_path,
     vocab_path,
 )
-
 from viscoin.datasets.cub import CUB_200_2011
-
 from viscoin.models.utils import load_viscoin_pickle
-from viscoin.testing.clip_adapter import get_concept_labels_vocab
+from viscoin.testing.concept2clip import get_concept_labels_vocab
 from viscoin.testing.concept_label_metric import evaluate_concept_labels
 
 
@@ -81,7 +79,7 @@ def clip_concept_labels(
     # Load CLIP adapter model and CLIP model
     clip_adapter = torch.load(clip_adapter_path, weights_only=False).to(device)
 
-    clip_model, preprocess = clip.load("ViT-B/16", device=device)
+    clip_model, _ = clip.load("ViT-B/16", device=device)
 
     # Load Viscoin Classifier and Concept Extractor
     viscoin = load_viscoin_pickle(viscoin_pickle_path)
@@ -164,13 +162,15 @@ def evalutate_concept_captions(
     device: str,
     evaluation_method: str,
     topk_value: int,
-    neurons_to_study: int,
+    neurons_to_study: str,
 ):
     """
     Evaluate the provided predictions of concept labels against cub expert annotations.
     """
 
-    neurons_to_study = [int(i) for i in neurons_to_study.split(",")] if neurons_to_study else []
+    neurons_indexes_to_study = (
+        [int(i) for i in neurons_to_study.split(",")] if neurons_to_study else []
+    )
 
     evaluate_concept_labels(
         expert_annotations_score_path,
@@ -180,5 +180,5 @@ def evalutate_concept_captions(
         device,
         evaluation_method,
         topk_value,
-        neurons_to_study,
+        neurons_indexes_to_study,
     )

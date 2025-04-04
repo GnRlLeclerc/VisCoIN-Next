@@ -193,33 +193,6 @@ def gan_regularization_loss(gan_latents: Tensor, model: GeneratorAdapted) -> Ten
 
 
 ###################################################################################################
-#                                  VAE TRAINING LOSS FUNCTIONS                                    #
-###################################################################################################
-
-
-def vae_reconstruction_loss(recon_x, x, mu, logvar):
-    """
-    VAE loss function combining the reconstruction loss and the KL divergence.
-
-    Args:
-        recon_x: reconstructed input from the VAE
-        x: original input
-        mu: mean from the encoder's latent space
-        logvar: log variance from the encoder's latent space
-    """
-
-    beta = 2.0
-
-    # Reconstruction loss: binary cross entropy summed over all elements in the batch
-    REC = F.mse_loss(recon_x, x)
-
-    # KL divergence between the learned latent distribution and a standard normal distribution
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-
-    return REC + beta * KLD
-
-
-###################################################################################################
 #                                  INFO NCE LOSS FUNCTION                                         #
 #       The following code was taken from the info-nce-pytorch repository by RElbers              #
 ###################################################################################################
@@ -334,20 +307,20 @@ def info_nce(
         # Explicit negative keys
 
         # Cosine between positive pairs
-        positive_logit = torch.sum(query * positive_key, dim=1, keepdim=True)
+        positive_logit = torch.sum(query * positive_key, dim=1, keepdim=True)  # type: ignore
 
         if negative_mode == "unpaired":
             # Cosine between all query-negative combinations
             negative_logits = query @ transpose(negative_keys)
 
         elif negative_mode == "paired":
-            query = query.unsqueeze(1)
+            query = query.unsqueeze(1)  # type: ignore
             negative_logits = query @ transpose(negative_keys)
             negative_logits = negative_logits.squeeze(1)
 
         # First index in last dimension are the positive samples
-        logits = torch.cat([positive_logit, negative_logits], dim=1)
-        labels = torch.zeros(len(logits), dtype=torch.long, device=query.device)
+        logits = torch.cat([positive_logit, negative_logits], dim=1)  # type: ignore
+        labels = torch.zeros(len(logits), dtype=torch.long, device=query.device)  # type: ignore
     else:
         # Negative keys are implicitly off-diagonal positive keys.
 
@@ -355,7 +328,7 @@ def info_nce(
         logits = query @ transpose(positive_key)
 
         # Positive keys are the entries on the diagonal
-        labels = torch.arange(len(query), device=query.device)
+        labels = torch.arange(len(query), device=query.device)  # type: ignore
 
     return F.cross_entropy(logits / temperature, labels, reduction=reduction)
 

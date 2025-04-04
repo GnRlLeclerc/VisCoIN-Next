@@ -1,18 +1,21 @@
+import io
+import json
 import os
+import zipfile
 
-import numpy as np
 import torch
 from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
-from torchvision.transforms.v2 import Compose
+from torchvision.transforms import (
+    Compose as ComposeV1,  # for the CLIP model that uses legacy compose
+)
+from torchvision.transforms.v2 import Compose as ComposeV2
 
 from viscoin.datasets.transforms import RESNET_TEST_TRANSFORM, RESNET_TRAIN_TRANSFORM
 from viscoin.utils.types import Mode
 
-import zipfile
-import json
-import io
+Compose = ComposeV1 | ComposeV2
 
 
 class FunnyBirds(Dataset):
@@ -79,6 +82,8 @@ class FunnyBirds(Dataset):
 
         # Apply the transformations
         tensor_image = self.transform(image)
+
+        assert type(tensor_image) == Tensor, "The image is not a tensor."
 
         return tensor_image
 
