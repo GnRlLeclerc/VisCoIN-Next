@@ -3,7 +3,7 @@ import clip
 import numpy as np
 import torch
 
-from viscoin.cli.utils import clip_adapter_path, device, viscoin_pickle_path, vocab_path
+from viscoin.cli.utils import concept2clip_path, device, viscoin_pickle_path, vocab_path
 from viscoin.datasets.cub import CUB_200_2011
 from viscoin.models.utils import load_viscoin_pickle
 from viscoin.testing.concept2clip import get_concept_labels_vocab
@@ -11,7 +11,7 @@ from viscoin.testing.concept_label_metric import evaluate_concept_labels
 
 
 @click.command()
-@clip_adapter_path
+@concept2clip_path
 @vocab_path
 @viscoin_pickle_path
 @click.option(
@@ -40,7 +40,7 @@ from viscoin.testing.concept_label_metric import evaluate_concept_labels
 )
 @device
 def clip_concept_labels(
-    clip_adapter_path: str,
+    concept2clip_path: str,
     vocab_path: str,
     viscoin_pickle_path: str,
     n_concepts: int,
@@ -58,7 +58,7 @@ def clip_concept_labels(
         We average the similarity for each concept and save the results to a file.
 
     Args:
-        clip_adapter_path (str): Path to the clip adapter model
+        concept2clip_path (str): Path to the clip adapter model
         vocab_path (str): Path to the vocabulary file (.txt)
         viscoin_pickle_path (str): Path to the viscoin pickle file
         n_concepts (int): The number of concepts
@@ -69,7 +69,7 @@ def clip_concept_labels(
     """
 
     # Load CLIP adapter model and CLIP model
-    clip_adapter = torch.load(clip_adapter_path, weights_only=False).to(device)
+    concept2clip = torch.load(concept2clip_path, weights_only=False).to(device)
 
     clip_model, _ = clip.load("ViT-B/16", device=device)
 
@@ -88,7 +88,7 @@ def clip_concept_labels(
     dataset = CUB_200_2011(mode="test")
 
     concept_labels, probs, most_activating_images = get_concept_labels_vocab(
-        clip_adapter,
+        concept2clip,
         viscoin.concept_extractor,
         viscoin.classifier,
         clip_model,

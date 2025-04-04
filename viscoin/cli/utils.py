@@ -52,7 +52,7 @@ def viscoin_pickle_path(func):
     )(func)
 
 
-def clip_adapter_path(func):
+def concept2clip_path(func):
     return click.option(
         "--clip-adapter-path",
         help="The path to the clip adapter model",

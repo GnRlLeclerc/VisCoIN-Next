@@ -17,7 +17,7 @@ from viscoin.models.gan import GeneratorAdapted
 from viscoin.models.utils import load_viscoin, load_viscoin_pickle, save_viscoin_pickle
 from viscoin.testing.classifiers import test_classifier
 from viscoin.training.classifiers import train_classifier
-from viscoin.training.clip_adapter import ClipAdapterTrainingParams, train_clip_adapter
+from viscoin.training.concept2clip import ClipAdapterTrainingParams, train_concept2clip
 from viscoin.training.viscoin import TrainingParameters, train_viscoin
 from viscoin.utils.logging import configure_score_logging
 
@@ -128,8 +128,8 @@ def train(
                 gradient_accumulation_steps,
             )
 
-        case "clip_adapter" | "clip_adapter_vae":
-            setup_clip_adapter_training(
+        case "concept2clip" | "concept2clip_vae":
+            setup_concept2clip_training(
                 model_name,
                 device,
                 dataset_type,
@@ -175,7 +175,7 @@ def setup_classifier_training(
     torch.save(weights, output_weights)
 
 
-def setup_clip_adapter_training(
+def setup_concept2clip_training(
     model_type: str,
     device: str,
     dataset_type: str,
@@ -194,13 +194,13 @@ def setup_clip_adapter_training(
     n_concepts = viscoin.concept_extractor.n_concepts
     clip_embedding_dim = clip_model.visual.output_dim
 
-    if model_type == "clip_adapter":
-        clip_adapter = Concept2CLIP(n_concepts * 9, clip_embedding_dim)
+    if model_type == "concept2clip":
+        concept2clip = Concept2CLIP(n_concepts * 9, clip_embedding_dim)
         params = ClipAdapterTrainingParams(epochs=epochs, learning_rate=learning_rate)
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
-    clip_adapter = clip_adapter.to(device)
+    concept2clip = concept2clip.to(device)
 
     configure_score_logging(f"{model_type}_{epochs}.log")
 
@@ -219,8 +219,8 @@ def setup_clip_adapter_training(
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     # The training saves the viscoin model regularly
-    train_clip_adapter(
-        clip_adapter,
+    train_concept2clip(
+        concept2clip,
         viscoin.concept_extractor.to(device),
         viscoin.classifier.to(device),
         viscoin.gan.to(device),
@@ -231,7 +231,7 @@ def setup_clip_adapter_training(
         params,
     )
 
-    torch.save(clip_adapter, output_weights)
+    torch.save(concept2clip, output_weights)
 
 
 def load_classifier(path: str, n_classes: int) -> Classifier:

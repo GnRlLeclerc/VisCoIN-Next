@@ -17,7 +17,7 @@ from viscoin.utils.metrics import cosine_matching
 
 
 def test_adapter(
-    clip_adapter: Concept2CLIP,
+    concept2clip: Concept2CLIP,
     classifier: Classifier,
     concept_extractor: ConceptExtractor,
     clip_model: CLIP,
@@ -42,7 +42,7 @@ def test_adapter(
     if criterion is None:
         criterion = nn.MSELoss()
 
-    clip_adapter.eval()
+    concept2clip.eval()
 
     with torch.no_grad():
         total_loss = 0
@@ -61,7 +61,7 @@ def test_adapter(
             _, hidden = classifier.forward(inputs)
             concept_space, _ = concept_extractor.forward(hidden[-3:])
 
-            output = clip_adapter(concept_space.view(-1, concept_extractor.n_concepts * 9))
+            output = concept2clip(concept_space.view(-1, concept_extractor.n_concepts * 9))
 
             # Update metrics
             total_loss += criterion(output, clip_embeddings).item()
@@ -74,7 +74,7 @@ def test_adapter(
 
 
 def get_concept_labels_vocab(
-    clip_adapter: Concept2CLIP,
+    concept2clip: Concept2CLIP,
     concept_extractor: ConceptExtractor,
     classifier: Classifier,
     clip_model: CLIP,
@@ -88,7 +88,7 @@ def get_concept_labels_vocab(
     """Retrieve concept labels for VisCoIN concepts from CLIP embeddings
 
     Args:
-        clip_adapter: the trained clip adapter model
+        concept2clip: the trained clip adapter model
         clip_model: the loaded CLIP model
         vocab: the vocabulary from which to chose the concept labels
         n_concepts: the number of concepts
@@ -108,7 +108,7 @@ def get_concept_labels_vocab(
     image_concepts = torch.zeros((len(dataset), n_concepts, 3, 3))
     most_activating_images_per_concept = []  # List to store selected image indices for each concept
 
-    clip_adapter.eval()
+    concept2clip.eval()
 
     with torch.no_grad():
 
@@ -149,14 +149,14 @@ def get_concept_labels_vocab(
                 original_concept = image_concepts[image_idx]
 
                 # Compute original CLIP embedding
-                clip_embedding = clip_adapter(
+                clip_embedding = concept2clip(
                     original_concept.view(-1, concept_extractor.n_concepts * 9).to(device)
                 )
 
                 # Compute amplified concept and its CLIP embedding ---
                 amplified_concept = original_concept.clone()
                 amplified_concept[concept_idx] *= multiplier
-                amplified_clip_embedding = clip_adapter(
+                amplified_clip_embedding = concept2clip(
                     amplified_concept.view(-1, concept_extractor.n_concepts * 9).to(device)
                 )
 

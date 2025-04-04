@@ -25,8 +25,8 @@ class ClipAdapterTrainingParams:
     test_criterion = nn.MSELoss()
 
 
-def train_clip_adapter(
-    clip_adapter: Concept2CLIP,
+def train_concept2clip(
+    concept2clip: Concept2CLIP,
     concept_extractor: ConceptExtractor,
     classifier: Classifier,
     viscoin_gan: GeneratorAdapted,
@@ -50,11 +50,11 @@ def train_clip_adapter(
         learning_rate: the learning rate for the optimizer
     """
     best_loss = float("inf")
-    best_model = clip_adapter.state_dict()
+    best_model = concept2clip.state_dict()
     logger = get_logger()
 
     # Optimizer and scheduler
-    optimizer = optim.Adam(clip_adapter.parameters(), lr=params.learning_rate)
+    optimizer = optim.Adam(concept2clip.parameters(), lr=params.learning_rate)
 
     resizer = torchvision.transforms.Resize((224, 224))
 
@@ -65,7 +65,7 @@ def train_clip_adapter(
         #                                      TRAINING STEP                                      #
         ###########################################################################################
 
-        clip_adapter.train()
+        concept2clip.train()
 
         # Training metrics for this epoch
         total_loss = 0
@@ -93,7 +93,7 @@ def train_clip_adapter(
             rebuilt_images_clip_embeddings = clip_model.encode_image(rebuilt_images).float()
 
             # Generate clip embeddings from concept embeddings
-            output = clip_adapter(concept_space.view(-1, concept_extractor.n_concepts * 9))
+            output = concept2clip(concept_space.view(-1, concept_extractor.n_concepts * 9))
 
             optimizer.zero_grad()
 
@@ -129,7 +129,7 @@ def train_clip_adapter(
         ###########################################################################################
 
         mean_loss, matching_accuracy = test_adapter(
-            clip_adapter,
+            concept2clip,
             classifier,
             concept_extractor,
             clip_model,
@@ -140,7 +140,7 @@ def train_clip_adapter(
         )
 
         if mean_loss < best_loss:  # type: ignore
-            best_model = clip_adapter.state_dict()
+            best_model = concept2clip.state_dict()
             best_loss = mean_loss
 
         # Log the current state of training
@@ -157,7 +157,7 @@ def train_clip_adapter(
 
     # Load the best model
     print(f"Best test loss: {best_loss:.4f}")
-    clip_adapter.load_state_dict(best_model)
+    concept2clip.load_state_dict(best_model)
 
 
 def get_average_clip_embedding(loader: DataLoader, clip_model: CLIP, device: str) -> torch.Tensor:
