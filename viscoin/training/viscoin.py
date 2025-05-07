@@ -3,6 +3,7 @@ Training function for the whole viscoin model.
 """
 
 import itertools
+import json
 from dataclasses import dataclass
 
 import numpy as np
@@ -255,7 +256,7 @@ def train_viscoin(
 
             # Merge the training and testing results
             data.update({f"test_{key}": value for key, value in test_results.__dict__.items()})
-            logger.info(data)
+            logger.info(json.dumps(data))
 
         # Every 20_000 iterations, save the model checkpoints
         # NOTE: was 50_000 in the original code

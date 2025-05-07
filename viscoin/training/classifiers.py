@@ -8,6 +8,7 @@ Best parameters:
 - batch size: 32
 """
 
+import json
 from dataclasses import dataclass
 
 from torch import nn, optim
@@ -55,7 +56,7 @@ def train_classifier(
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in tqdm(range(1, params.epochs + 1), "Training epochs"):
+    for _ in tqdm(range(params.epochs), "Training epochs"):
         ###########################################################################################
         #                                      TRAINING STEP                                      #
         ###########################################################################################
@@ -104,12 +105,14 @@ def train_classifier(
 
         # Log the current state of training
         logger.info(
-            {
-                "train_loss": batch_mean_loss,
-                "train_accuracy": accuracy,
-                "test_loss": mean_loss,
-                "test_accuracy": accuracy,
-            }
+            json.dumps(
+                {
+                    "train_loss": batch_mean_loss,
+                    "train_accuracy": accuracy,
+                    "test_loss": mean_loss,
+                    "test_accuracy": accuracy,
+                }
+            )
         )
 
     # Load the best model

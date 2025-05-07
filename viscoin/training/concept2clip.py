@@ -1,3 +1,4 @@
+import json
 import os
 from dataclasses import dataclass
 from typing import Literal
@@ -148,7 +149,7 @@ def train_concept2clip(
         }
 
         # Log the current state of training in jsonl format for easy plotting
-        logger.info(data)
+        logger.info(json.dumps(data))
 
         progress.set_postfix(
             train_loss=train_loss,

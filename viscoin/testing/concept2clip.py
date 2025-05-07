@@ -1,23 +1,16 @@
 """Classifiers testing functions"""
 
-import clip
-import numpy as np
 import torch
-from clip.model import CLIP
+from clip.model import nn
 from torch.nn import functional as F
-from torch.types import Number
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from viscoin.datasets.cub import CUB_200_2011
-from viscoin.models.classifiers import Classifier
-from viscoin.models.concept2clip import Concept2CLIP
-from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.utils.metrics import cosine_matching
 
 
 def test_concept2clip(
-    concept2clip: Concept2CLIP,
+    concept2clip: nn.Module,
     loader: DataLoader,
     device: str,
     verbose: bool = True,
