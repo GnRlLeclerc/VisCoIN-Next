@@ -1,9 +1,14 @@
 """Model utilities."""
 
+import os
 from dataclasses import dataclass
 
 import torch
+from torch import Tensor
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
+from viscoin.datasets.utils import DatasetType, get_datasets
 from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.models.explainers import Explainer
@@ -18,6 +23,85 @@ class VisCoINModels:
     concept_extractor: ConceptExtractor
     explainer: Explainer
     gan: GeneratorAdapted
+
+    def compute_w_space(
+        self,
+        dataset: DatasetType,
+        device: str,
+    ) -> tuple[Tensor, Tensor]:
+        """Compute and return the train and test W+ spaces of the GAN for the given dataset.
+        The results are cached under checkpoints/gan-w/
+
+        Returns:
+            train_w: W+ space for the training set
+            test_w: W+ space for the testing set
+        """
+
+        try:
+            return (
+                torch.load(f"checkpoints/gan-w/{dataset}-train.pt", weights_only=True),
+                torch.load(f"checkpoints/gan-w/{dataset}-test.pt", weights_only=True),
+            )
+        except FileNotFoundError:
+            pass
+
+        gan = self.gan.to(device)
+        classifier = self.classifier.to(device)
+        concept_extractor = self.concept_extractor.to(device)
+
+        train_dataset, test_dataset = get_datasets(dataset, "test")
+        batch_size = 4
+
+        train_loader = DataLoader(train_dataset, batch_size, shuffle=False)
+        test_loader = DataLoader(test_dataset, batch_size, shuffle=False)
+
+        train_w = torch.zeros((len(train_loader.dataset), gan.num_ws, gan.w_dim))  # type: ignore
+        test_w = torch.zeros((len(test_loader.dataset), gan.num_ws, gan.w_dim))  # type: ignore
+
+        for i, (img, _) in enumerate(
+            tqdm(
+                train_loader,
+                desc=f"Computing W+ space for {dataset} - train",
+            )
+        ):
+            img = img.to(device)
+
+            with torch.no_grad():
+                _, latents = classifier.forward(img)
+                concepts, extra_info = concept_extractor.forward(latents[-3:])
+                _, latents = gan.forward(
+                    z1=concepts,
+                    z2=extra_info,
+                    return_latents=True,
+                )
+
+            train_w[i * batch_size : (i + 1) * batch_size] = latents.detach().cpu()
+
+        for i, (img, _) in enumerate(
+            tqdm(
+                test_loader,
+                desc=f"Computing W+ space for {dataset} - test",
+            )
+        ):
+            img = img.to(device)
+
+            with torch.no_grad():
+                _, latents = classifier.forward(img)
+                concepts, extra_info = concept_extractor.forward(latents[-3:])
+                _, latents = gan.forward(
+                    z1=concepts,
+                    z2=extra_info,
+                    return_latents=True,
+                )
+
+            test_w[i * batch_size : (i + 1) * batch_size] = latents.detach().cpu()
+
+        # Save the W+ spaces
+        os.makedirs("checkpoints/gan-w", exist_ok=True)
+        torch.save(train_w, f"checkpoints/gan-w/{dataset}-train.pt")
+        torch.save(test_w, f"checkpoints/gan-w/{dataset}-test.pt")
+
+        return train_w, test_w
 
 
 def save_viscoin(
