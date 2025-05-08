@@ -143,6 +143,7 @@
                 lpips
                 clip
                 ipykernel
+                scikit-learn
 
                 # GTK backend for matplotlib
                 pygobject3
