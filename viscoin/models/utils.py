@@ -5,10 +5,9 @@ from dataclasses import dataclass
 
 import torch
 from torch import Tensor
-from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from viscoin.datasets.utils import DatasetType, get_datasets
+from viscoin.datasets.utils import DatasetType, get_dataloaders
 from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.models.explainers import Explainer
@@ -48,12 +47,9 @@ class VisCoINModels:
         gan = self.gan.to(device)
         classifier = self.classifier.to(device)
         concept_extractor = self.concept_extractor.to(device)
-
-        train_dataset, test_dataset = get_datasets(dataset, "test")
         batch_size = 4
 
-        train_loader = DataLoader(train_dataset, batch_size, shuffle=False)
-        test_loader = DataLoader(test_dataset, batch_size, shuffle=False)
+        train_loader, test_loader = get_dataloaders(dataset, batch_size, "test")
 
         train_w = torch.zeros((len(train_loader.dataset), gan.num_ws, gan.w_dim))  # type: ignore
         test_w = torch.zeros((len(test_loader.dataset), gan.num_ws, gan.w_dim))  # type: ignore
