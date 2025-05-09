@@ -124,9 +124,9 @@ def _train_classifier(
 ):
     """Train the VisCoIN classifier"""
 
-    configure_score_logging(f"classifier_{epochs}.jsonl")
-
     params = ClassifierTrainingParams(epochs, learning_rate, batch_size, device)  # type: ignore
+
+    configure_score_logging(f"classifier_{params.epochs}.jsonl")
     train, test = get_dataloaders(dataset, params.batch_size)
 
     model = Classifier(output_classes=DATASET_CLASSES[dataset], pretrained=checkpoints is None)
@@ -169,7 +169,7 @@ def _train_concept2clip(
         epochs=epochs, learning_rate=learning_rate, batch_size=batch_size  # type: ignore
     )
 
-    configure_score_logging(f"concept2clip_{epochs}.jsonl")
+    configure_score_logging(f"concept2clip_{params.epochs}.jsonl")
 
     # The training saves the viscoin model regularly
     train_concept2clip(
@@ -204,8 +204,6 @@ def _train_viscoin(
     generator_gan = torch.load(DEFAULT_CHECKPOINTS[dataset]["gan"])
     viscoin_gan = GeneratorAdapted.from_gan(generator_gan)
 
-    configure_score_logging(f"viscoin_{epochs}.jsonl")
-
     # Using the default parameters for training on CUB
     params = VisCoINTrainingParams(
         learning_rate=learning_rate,  # type: ignore
@@ -213,6 +211,8 @@ def _train_viscoin(
         gradient_accumulation=gradient_accumulation_steps,  # type: ignore
         batch_size=batch_size,  # type: ignore
     )
+
+    configure_score_logging(f"viscoin_{params.iterations}.jsonl")
 
     train, test = get_dataloaders(dataset, params.batch_size)
 
