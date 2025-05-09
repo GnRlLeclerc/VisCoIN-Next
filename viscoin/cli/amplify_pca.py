@@ -20,7 +20,14 @@ from viscoin.utils.plotting import plot_grid
     help="Amount of PCA components to compute",
     default=10,
 )
-def amplify_pca(viscoin_pickle_path: str, dataset: DatasetType, device: str, pca: int):
+@click.option(
+    "--image",
+    help="Index of the test image to amplify. If not provided, a random image will be used.",
+    type=int,
+)
+def amplify_pca(
+    viscoin_pickle_path: str, dataset: DatasetType, device: str, pca: int, image: int | None
+):
     """
     Amplify a random test image using PCA directions.
     """
@@ -35,7 +42,7 @@ def amplify_pca(viscoin_pickle_path: str, dataset: DatasetType, device: str, pca
     pca_.fit(train_w.view(train_w.shape[0], -1).numpy())
 
     # Choose a random image from the test set to amplify
-    index = rd.randint(0, len(test_dataset))  # type: ignore
+    index = rd.randint(0, len(test_dataset)) if image is None else image  # type: ignore
     print("Amplifying image n°", index)
 
     # Compute amplified latent space
@@ -63,5 +70,5 @@ def amplify_pca(viscoin_pickle_path: str, dataset: DatasetType, device: str, pca
             imgs,
             "W+ amplification along PCA component",
             [f"x{factor}" for factor in multipliers],
-            [f"Component {j}" for j in range(i * 5, (i + 1) * 5)],
+            [f"Component {j +1}" for j in range(i * 5, (i + 1) * 5)],
         )
