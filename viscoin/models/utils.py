@@ -2,6 +2,7 @@
 
 import os
 from dataclasses import dataclass
+from typing import Literal
 
 import torch
 from torch import Tensor
@@ -97,7 +98,81 @@ class VisCoINModels:
         torch.save(train_w, f"checkpoints/gan-w/{dataset}-train.pt")
         torch.save(test_w, f"checkpoints/gan-w/{dataset}-test.pt")
 
+        # Move models back to cpu to free gpu memory
+        gan.cpu()
+        classifier.cpu()
+        concept_extractor.cpu()
+
         return train_w, test_w
+
+    def compute_concept_space(
+        self,
+        dataset: DatasetType,
+        device: str,
+        batch_size: int,
+    ):
+        """Precompute the concept spaces for the whole training and testing image sets.
+
+        Args:
+            dataset: name of the dataset (for cache path)
+            device: device to use for training
+            batch_size: batch size to use for computation
+
+        The results are cached under checkpoints/concepts/
+
+        Returns:
+            train_concept_spaces: concept spaces for the training set (on CPU)
+            test_concept_spaces: concept spaces for the testing set (on CPU)
+        """
+
+        try:
+            train_embeddings = torch.load(_cache("train", dataset), weights_only=True)
+            test_embeddings = torch.load(_cache("test", dataset), weights_only=True)
+            return train_embeddings, test_embeddings
+        except FileNotFoundError:
+            pass
+
+        # Use both datasets in test transform mode, no shuffling
+        train, test = get_dataloaders(dataset, batch_size, "test")
+
+        concept_extractor = self.concept_extractor.to(device)
+        classifier = self.classifier.to(device)
+
+        n_concepts = concept_extractor.n_concepts
+        len_train = len(train_loader.dataset)  # type: ignore
+        len_test = len(test_loader.dataset)  # type: ignore
+
+        train_concept_spaces = torch.zeros((len_train, n_concepts, 3, 3))  # type: ignore
+        test_concept_spaces = torch.zeros((len_test, n_concepts, 3, 3))  # type: ignore
+
+        classifier.eval()
+        concept_extractor.eval()
+
+        for i, (inputs, _) in enumerate(tqdm(train, desc="Precomputing training embeddings")):
+            inputs = inputs.to(device)
+            _, hidden = classifier.forward(inputs)
+            concept_space, _ = concept_extractor.forward(hidden[-3:])
+            train_concept_spaces[i * batch_size : (i + 1) * batch_size] = (
+                concept_space.detach().cpu()
+            )
+
+        for i, (inputs, _) in enumerate(tqdm(test, desc="Precomputing testing embeddings")):
+            inputs = inputs.to(device)
+            _, hidden = classifier.forward(inputs)
+            concept_space, _ = concept_extractor.forward(hidden[-3:])
+            test_concept_spaces[i * batch_size : (i + 1) * batch_size] = (
+                concept_space.detach().cpu()
+            )
+
+        os.makedirs("checkpoints/concepts", exist_ok=True)
+        torch.save(train_concept_spaces, _cache("train", dataset))
+        torch.save(test_concept_spaces, _cache("test", dataset))
+
+        # Move models back to cpu to free gpu memory
+        concept_extractor.cpu()
+        classifier.cpu()
+
+        return train_concept_spaces, test_concept_spaces
 
 
 def save_viscoin(
@@ -157,3 +232,8 @@ def load_viscoin_pickle(
 ) -> VisCoINModels:
     """Jointly load the VisCoIN models from a pickle file."""
     return torch.load(path, weights_only=False)
+
+
+def _cache(mode: Literal["train", "test"], dataset: str) -> str:
+    """Concept space cache path."""
+    return f"checkpoints/concepts/{dataset}_{mode}.pt"

@@ -1,5 +1,7 @@
 """Model training CLI command"""
 
+from typing import Literal
+
 import click
 import torch
 
@@ -20,7 +22,7 @@ from viscoin.datasets.utils import (
 )
 from viscoin.models.classifiers import Classifier
 from viscoin.models.clip import CLIP
-from viscoin.models.concept2clip import Concept2CLIP
+from viscoin.models.concept2clip import Concept2CLIP, Concept2CLIPStyleGAN
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.models.explainers import Explainer
 from viscoin.models.gan import GeneratorAdapted
@@ -39,13 +41,19 @@ from viscoin.utils.logging import configure_score_logging
 @epochs
 @learning_rate
 @output_weights
+@checkpoints
 @click.option(
     "--gradient-accumulation-steps",
     help="The amount of steps to accumulate gradients before stepping the optimizers",
     type=int,
     default=1,
 )
-@checkpoints
+@click.option(
+    "--latent-type",
+    help="The latent space to train concept2clip on",
+    type=click.Choice(["viscoin", "gan"]),
+    default="viscoin",
+)
 def train(
     model_name: str,
     dataset: DatasetType,
@@ -54,6 +62,7 @@ def train(
     batch_size: int | None,
     learning_rate: float | None,
     epochs: int | None,
+    latent_type: Literal["viscoin", "gan"],
     output_weights: str,
     gradient_accumulation_steps: int,
 ):
@@ -77,6 +86,7 @@ def train(
         case "concept2clip":
             _train_concept2clip(
                 device,
+                latent_type,
                 dataset,
                 epochs,
                 learning_rate,
@@ -132,6 +142,7 @@ def _train_classifier(
 
 def _train_concept2clip(
     device: str,
+    latent_type: Literal["viscoin", "gan"],
     dataset: DatasetType,
     epochs: int | None,
     learning_rate: float | None,
@@ -139,13 +150,21 @@ def _train_concept2clip(
     output_weights: str,
 ):
     """Train a concept2clip model"""
-
     viscoin = load_viscoin_pickle(DEFAULT_CHECKPOINTS[dataset]["viscoin"])
+    gan = viscoin.gan
+
     clip_model = CLIP(device)
 
     # Loading the appropriate clip adapter model
     n_concepts = viscoin.concept_extractor.n_concepts
-    concept2clip = Concept2CLIP(n_concepts, clip_model.embedding_size)
+
+    concept2clip = None
+    match latent_type:
+        case "viscoin":
+            concept2clip = Concept2CLIP(n_concepts, clip_model.embedding_size)
+        case "gan":
+            concept2clip = Concept2CLIPStyleGAN(gan.num_ws, gan.w_dim, clip_model.embedding_size)
+
     params = Concept2ClipTrainingParams(
         epochs=epochs, learning_rate=learning_rate, batch_size=batch_size  # type: ignore
     )
@@ -154,10 +173,10 @@ def _train_concept2clip(
 
     # The training saves the viscoin model regularly
     train_concept2clip(
-        viscoin.classifier.to(device),
-        viscoin.concept_extractor.to(device),
+        viscoin,
         concept2clip.to(device),
         clip_model,
+        latent_type,
         dataset,
         device,
         params,
