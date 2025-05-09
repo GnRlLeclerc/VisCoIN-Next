@@ -50,16 +50,18 @@ sizes = [
     "small",
     "medium",
     "large",
-    "long",
-    "broad",
+    # NOTE: on 256x256, sizes too precise are not visible
+    # "long",
+    # "broad",
 ]
 
-patterns = [
-    "striped",
-    "solid",
-    "plain",
-    "spotted",
-]
+# NOTE: CLIP is not fine enough to distinguish between patterns
+# patterns = [
+#     "striped",
+#     "solid",
+#     "plain",
+#     "spotted",
+# ]
 
 beak_shapes = [
     "hooked",
@@ -115,12 +117,11 @@ def generate() -> list[str]:
 
     for part in parts:
         for color in colors:
-            for pattern in patterns:
-                if part in bonus:
-                    for shape in bonus[part]:
-                        captions.extend(_add_sizes(f"{pattern} {color} {shape} {part}", part))
-                else:
-                    captions.extend(_add_sizes(f"{pattern} {color} {part}", part))
+            if part in bonus:
+                for shape in bonus[part]:
+                    captions.extend(_add_sizes(f"{color} {shape} {part}", part))
+            else:
+                captions.extend(_add_sizes(f"{color} {part}", part))
 
     return captions
 
