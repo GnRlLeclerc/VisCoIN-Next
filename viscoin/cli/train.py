@@ -153,7 +153,7 @@ def _train_concept2clip(
     viscoin = load_viscoin_pickle(DEFAULT_CHECKPOINTS[dataset]["viscoin"])
     gan = viscoin.gan
 
-    clip_model = CLIP(device)
+    clip_model = CLIP()
 
     # Loading the appropriate clip adapter model
     n_concepts = viscoin.concept_extractor.n_concepts
