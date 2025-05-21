@@ -61,7 +61,7 @@ def train_concept2clip(
     match latent_type:
         case "viscoin":
             train_concept_spaces, test_concept_spaces = models.compute_concept_space(
-                dataset, device, batch_size
+                dataset, device
             )
         case "gan":
             train_concept_spaces, test_concept_spaces = models.compute_w_space(dataset, device)

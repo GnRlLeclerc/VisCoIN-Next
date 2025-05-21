@@ -50,7 +50,7 @@ class VisCoINModels:
         concept_extractor = self.concept_extractor.to(device)
         batch_size = 4
 
-        train_loader, test_loader = get_dataloaders(dataset, batch_size, "test")
+        train_loader, test_loader = get_dataloaders(dataset, batch_size, "test", shuffle=False)
 
         train_w = torch.zeros((len(train_loader.dataset), gan.num_ws, gan.w_dim))  # type: ignore
         test_w = torch.zeros((len(test_loader.dataset), gan.num_ws, gan.w_dim))  # type: ignore
@@ -109,14 +109,12 @@ class VisCoINModels:
         self,
         dataset: DatasetType,
         device: str,
-        batch_size: int,
     ):
         """Precompute the concept spaces for the whole training and testing image sets.
 
         Args:
             dataset: name of the dataset (for cache path)
             device: device to use for training
-            batch_size: batch size to use for computation
 
         The results are cached under checkpoints/concepts/
 
@@ -133,14 +131,15 @@ class VisCoINModels:
             pass
 
         # Use both datasets in test transform mode, no shuffling
-        train, test = get_dataloaders(dataset, batch_size, "test")
+        batch_size = 4
+        train, test = get_dataloaders(dataset, batch_size, "test", shuffle=False)
 
         concept_extractor = self.concept_extractor.to(device)
         classifier = self.classifier.to(device)
 
         n_concepts = concept_extractor.n_concepts
-        len_train = len(train_loader.dataset)  # type: ignore
-        len_test = len(test_loader.dataset)  # type: ignore
+        len_train = len(train.dataset)  # type: ignore
+        len_test = len(test.dataset)  # type: ignore
 
         train_concept_spaces = torch.zeros((len_train, n_concepts, 3, 3))  # type: ignore
         test_concept_spaces = torch.zeros((len_test, n_concepts, 3, 3))  # type: ignore
