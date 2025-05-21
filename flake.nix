@@ -144,6 +144,7 @@
                 clip
                 ipykernel
                 scikit-learn
+                open-clip-torch
 
                 # GTK backend for matplotlib
                 pygobject3
