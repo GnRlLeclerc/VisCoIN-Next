@@ -13,6 +13,7 @@ from viscoin.cli.utils import (
     epochs,
     learning_rate,
     output_weights,
+    clip_version,
 )
 from viscoin.datasets.utils import (
     DATASET_CLASSES,
@@ -54,6 +55,7 @@ from viscoin.utils.logging import configure_score_logging
     type=click.Choice(["viscoin", "gan"]),
     default="viscoin",
 )
+@clip_version
 def train(
     model_name: str,
     dataset: DatasetType,
@@ -65,6 +67,7 @@ def train(
     latent_type: Literal["viscoin", "gan"],
     output_weights: str,
     gradient_accumulation_steps: int,
+    clip_version: str | None,
 ):
     """Train a model on a dataset
 
@@ -92,6 +95,7 @@ def train(
                 learning_rate,
                 batch_size,
                 output_weights,
+                clip_version,
             )
 
         case "viscoin":
@@ -148,12 +152,13 @@ def _train_concept2clip(
     learning_rate: float | None,
     batch_size: int | None,
     output_weights: str,
+    clip_version: str | None,
 ):
     """Train a concept2clip model"""
     viscoin = load_viscoin_pickle(DEFAULT_CHECKPOINTS[dataset]["viscoin"])
     gan = viscoin.gan
 
-    clip_model = CLIP()
+    clip_model = CLIP(clip_version)
 
     # Loading the appropriate clip adapter model
     n_concepts = viscoin.concept_extractor.n_concepts

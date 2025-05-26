@@ -86,7 +86,7 @@ def viscoin_pickle_path(func):
 
 def concept2clip_pickle_path(func):
     return click.option(
-        "--clip-adapter-path",
+        "--concept2clip-pickle-path",
         help="The path to the concept2clip pickle file",
         required=False,
         type=str,
@@ -99,4 +99,13 @@ def dataset(func):
         help="The dataset to use",
         default="cub",
         type=click.Choice(["cub", "funnybirds"]),
+    )(func)
+
+
+def clip_version(func):
+    return click.option(
+        "--clip-version",
+        help="The version of CLIP to use",
+        default="ViT-B/32",
+        type=click.Choice(["ViT-B/32", "ViT-H/14"]),
     )(func)

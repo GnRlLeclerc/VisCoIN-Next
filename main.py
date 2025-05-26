@@ -19,6 +19,8 @@ from viscoin.cli.logs import logs
 from viscoin.cli.test import test
 from viscoin.cli.to_pickle import to_pickle
 from viscoin.cli.train import train
+from viscoin.cli.concept_labels import clip_concept_labels
+from viscoin.cli.diffusion import image_to_prompt_diffusion
 
 # Imports Trogon if installed : Terminal User Interface for Click commands
 try:
@@ -43,6 +45,8 @@ main.add_command(concepts)
 main.add_command(concept_heatmaps)
 main.add_command(logs)
 main.add_command(amplify_pca)
+main.add_command(clip_concept_labels)
+main.add_command(image_to_prompt_diffusion)
 
 
 if __name__ == "__main__":

@@ -3,13 +3,19 @@
 import os
 from typing import Literal
 
-import clip
+import open_clip
 import torch
 from torch import Tensor, nn
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 
 from viscoin.datasets.utils import get_dataloaders
+
+
+CLIP_MODELS = {
+    "ViT-B/32": "hf-hub:laion/CLIP-ViT-B-32-laion2B-s34B-b79K",
+    "ViT-H/14": "hf-hub:laion/CLIP-ViT-H-14-laion2B-s32B-b79K",
+}
 
 
 def _img_cache(mode: Literal["train", "test"], dataset: str, model: str) -> str:
@@ -31,13 +37,15 @@ class CLIP(nn.Module):
     The difference is usually of the order of 1e-3.
     """
 
-    def __init__(self):
+    def __init__(self, kind: str = "ViT-B"):
         super().__init__()
 
-        self.kind = "ViT-B/32"
-        model, preprocess = clip.load(self.kind, device="cpu")
-        self.model = model
-        self.preprocess = preprocess
+        self.kind = kind
+        model, preprocess_train, preprocess_val = open_clip.create_model_and_transforms(
+            CLIP_MODELS[kind]
+        )
+        self.model = model.to("cuda" if torch.cuda.is_available() else "cpu")
+        self.preprocess = preprocess_train
         self.embedding_size = model.visual.output_dim
 
     def encode_image(self, x: Tensor) -> Tensor:
