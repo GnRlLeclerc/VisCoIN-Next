@@ -34,6 +34,10 @@ from viscoin.training.losses import (
 )
 
 
+import contextlib
+import io
+
+
 def test_viscoin(
     # Models
     classifier: Classifier,
@@ -139,6 +143,100 @@ def test_viscoin(
         results.fid_score = fid
 
     return results
+
+
+def test_viscoin_diffusion(
+    classifier: Classifier,
+    concept_extractor: ConceptExtractor,
+    explainer: Explainer,
+    diffusion_pipeline: torch.nn.Module,
+    concept2clip: torch.nn.Module,
+    dataloader: DataLoader,
+    device: str,
+    batch_size: int,
+    post_diffusion_transform: callable,
+    verbose: bool = True,
+) -> TestingResults:
+    """Test the viscoin model with diffusion model performance across a testing Dataloader
+
+    Args:
+        classifier: The classifier model.
+        concept_extractor: The concept extractor model.
+        explainer: The explainer model.
+        diffusion_pipeline: The diffusion model pipeline.
+        concept2clip: The concept to CLIP embedding model.
+        dataloader: The testing DataLoader.
+        device: The device to use.
+        verbose: Whether to display the progress bar.
+
+    Returns:
+        The testing results in a dataclass.
+    """
+
+    # Put the models in evaluation mode
+    classifier.eval()
+    concept_extractor.eval()
+    explainer.eval()
+    concept2clip.eval()
+
+    # Create the loss arrays
+    acc_loss: list[Number] = []
+    cr_loss: list[Number] = []
+    of_loss: list[Number] = []
+    lp_loss: list[Number] = []
+    rec_loss_l1: list[Number] = []
+    rec_loss_l2: list[Number] = []
+    preds_overlap: list[Number] = []
+    correct_preds: list[Number] = []
+    correct_expl_preds: list[Number] = []
+
+    for images, labels in tqdm(dataloader, desc="Viscoin test batches", disable=not verbose):
+        images, labels = images.to(device), labels.to(device)
+
+        with torch.no_grad():
+            classes, latent = classifier.forward(images)
+            encoded_concepts, extra_info = concept_extractor.forward(latent[-3:])
+            explainer_classes = explainer.forward(encoded_concepts)
+            rebuilt_clip_embeddings = concept2clip(encoded_concepts)
+
+            with contextlib.redirect_stdout(io.StringIO()):
+                rebuilt_images = diffusion_pipeline.generate(
+                    clip_image_embeds=rebuilt_clip_embeddings,
+                    num_samples=1,
+                    num_inference_steps=2,
+                    guidance_scale=0.0,
+                )
+
+            rebuilt_images = torch.stack(
+                [post_diffusion_transform(img) for img in rebuilt_images]
+            ).to(device)
+
+        preds = classes.argmax(dim=1, keepdim=True)
+        preds_expl = explainer_classes.argmax(dim=1, keepdim=True)
+
+        # Compute the different losses
+        acc_loss.append(F.cross_entropy(classes, labels).item())
+        cr_loss.append(concept_regularization_loss(encoded_concepts).item())
+        of_loss.append(output_fidelity_loss(classes, explainer_classes).item())
+        lp_loss.append(lpips_loss(rebuilt_images, images).item())
+        rec_loss_l1.append(F.l1_loss(rebuilt_images, images).item())
+        rec_loss_l2.append(F.mse_loss(rebuilt_images, images).item())
+        preds_overlap.append(torch.sum(preds == preds_expl).item())
+        correct_preds.append(torch.sum(preds == labels).item())
+        correct_expl_preds.append(torch.sum(preds_expl == labels).item())
+
+    # Aggregate the different losses
+    results = TestingResults(
+        acc_loss=np.mean(acc_loss),
+        cr_loss=np.mean(cr_loss),
+        of_loss=np.mean(of_loss),
+        lp_loss=np.mean(lp_loss),
+        rec_loss_l1=np.mean(rec_loss_l1),
+        rec_loss_l2=np.mean(rec_loss_l2),
+        preds_overlap=100 * np.mean(preds_overlap),
+        correct_preds=100 * np.mean(correct_preds),
+        correct_expl_preds=100 * np.mean(correct_expl_preds),
+    )
 
 
 @dataclass

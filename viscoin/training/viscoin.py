@@ -14,6 +14,7 @@ from torch import optim
 from torch.types import Number
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+import torchvision.transforms as transforms
 
 from viscoin.models.gan import GeneratorAdapted, fix_path
 from viscoin.utils.dataclasses import IgnoreNone
@@ -25,8 +26,10 @@ from stylegan2_ada.training.networks import Generator
 from viscoin.models.classifiers import Classifier
 from viscoin.models.concept_extractors import ConceptExtractor
 from viscoin.models.explainers import Explainer
-from viscoin.models.utils import save_viscoin
-from viscoin.testing.viscoin import amplify_concepts, test_viscoin
+from viscoin.models.concept2clip import Concept2CLIP
+from viscoin.models.clip import CLIP
+from viscoin.models.utils import save_viscoin, save_viscoin_diffusion
+from viscoin.testing.viscoin import amplify_concepts, test_viscoin_diffusion, test_viscoin
 from viscoin.training.losses import (
     concept_orthogonality_loss,
     concept_regularization_loss,
@@ -43,6 +46,9 @@ from viscoin.training.utils import (
     update_lr,
 )
 from viscoin.utils.logging import get_logger
+
+import contextlib
+import io
 
 
 @dataclass
@@ -292,4 +298,243 @@ def train_viscoin(
 
             print(
                 f"Faithfullness stats (probability of best concept after reconstruction): mean = {np.mean(best_concept_proba)} --- std = {np.std(best_concept_proba)}"
+            )
+
+
+def train_viscoin_diffusion(
+    # Models
+    classifier: Classifier,
+    concept_extractor: ConceptExtractor,
+    explainer: Explainer,
+    diffusion_pipeline: torch.nn.Module,
+    concept2clip: Concept2CLIP,
+    clip: CLIP,
+    # Loaders
+    train_loader: DataLoader,
+    test_loader: DataLoader,
+    # Training parameters
+    params: VisCoINTrainingParams,
+):
+    """Train the VisCoIN ensemble on the CUB or FunnyBirds dataset, using the parameters defined in the paper.
+    This version uses a diffusion model to generate synthetic samples instead of a GAN.
+
+    Args:
+        classifier: The classifier model to explain.
+        concept_extractor: The concept extractor model.
+        explainer: The explainer model.
+        diffusion_pipeline: The diffusion pipeline to use for reconstruction.
+        concept2clip: The Concept2CLIP model to translate viscoin concepts to CLIP embeddings.
+        train_loader: The training dataloader.
+        test_loader: The test dataloader.
+        test_loader: The test dataloader.
+        device: The device to use.
+    """
+    logger = get_logger()
+    device = params.device
+
+    # Model preparations
+    classifier.eval()  # Freeze the classifier
+    requires_grad(classifier, False)
+
+    # Move the models to the device
+    classifier = classifier.to(device)
+    concept_extractor = concept_extractor.to(device)
+    explainer = explainer.to(device)
+    concept2clip = concept2clip.to(device)
+
+    # Make dataloaders iterable
+    train_loader_iter = loop_iter(train_loader)
+
+    clip_resize = transforms.Resize((224, 224))
+    post_diffusion_transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Resize((256, 256)),
+        ]
+    )
+
+    # Define the optimizers
+    learning_rate = params.learning_rate
+    optimizer = optim.Adam(
+        itertools.chain(concept_extractor.parameters(), explainer.parameters()), lr=learning_rate
+    )
+    concept2clip_optimizer = optim.Adam(concept2clip.parameters(), lr=learning_rate)
+    accumulator = Accumulator(params.gradient_accumulation)
+
+    ###########################################################################
+    #                               TRAINING LOOP                             #
+    ###########################################################################
+
+    for i in tqdm(range(params.iterations), "Training VisCoIN"):
+
+        # Put models in training mode
+        concept_extractor.train()
+        explainer.train()
+
+        ###################################################
+        #            LEARNING RATE SCHEDULING             #
+        ###################################################
+
+        # Update the learning rate all 1000 iterations after the first half
+        if i > params.iterations // 2 and i % 1000 == 0:
+            learning_rate *= 0.8
+
+            update_lr(optimizer, learning_rate)
+            update_lr(concept2clip_optimizer, learning_rate)
+
+        ###################################################
+        #                  SAMPLE INPUTS                  #
+        ###################################################
+
+        # Gather real image samples (1 batch worth) and mix them with GAN generated images
+        images, labels = next(train_loader_iter)
+        images, labels = images.to(device), labels.to(device)
+
+        ###################################################
+        #                   FORWARD PASS                  #
+        ###################################################
+
+        # Forward pass of the VisCoIN ensemble
+        classes, hidden_states = classifier.forward(images)
+        encoded_concepts, extra_info = concept_extractor.forward(hidden_states[-3:])
+        explainer_classes = explainer.forward(encoded_concepts)
+
+        ###################################################
+        #                 LOSS COMPUTATION                #
+        ###################################################
+
+        acc_loss = F.cross_entropy(classes[: len(labels)], labels)
+
+        if i > params.cd_fid_iteration:
+            cr_loss = params.delta * concept_regularization_loss(encoded_concepts)
+            of_loss = params.alpha * output_fidelity_loss(classes, explainer_classes)
+        else:
+            cr_loss = torch.tensor(0.0).to(device)
+            of_loss = torch.tensor(0.0).to(device)
+
+        ortho_loss = concept_orthogonality_loss(concept_extractor)
+
+        # Get the CLIP embeddings from the concepts
+        rebuilt_clip_embeddings = concept2clip.forward(encoded_concepts)
+
+        # Reconstruct the images from the true CLIP embeddings
+        with torch.no_grad():
+            with contextlib.redirect_stdout(io.StringIO()):
+                # Disable diffusion pipeline output
+
+                # Get true CLIP embeddings for the images
+                clip_embeddings = clip.encode_image(clip_resize(images))
+
+                clip_images = diffusion_pipeline.generate(
+                    clip_image_embeds=clip_embeddings.detach(),
+                    num_samples=1,
+                    num_inference_steps=2,
+                    guidance_scale=0.0,
+                )
+
+                clip_images = torch.stack(
+                    [post_diffusion_transform(img) for img in clip_images]
+                ).to(device)
+
+                rebuilt_images = diffusion_pipeline.generate(
+                    clip_image_embeds=rebuilt_clip_embeddings.detach(),
+                    num_samples=1,
+                    num_inference_steps=2,
+                    guidance_scale=0.0,
+                )
+
+                rebuilt_images = torch.stack(
+                    [post_diffusion_transform(img) for img in rebuilt_images]
+                ).to(device)
+
+        # Get the classifier predictions for the reconstructed images
+        rebuilt_classes, _ = classifier.forward(rebuilt_images)
+        clip_classes, _ = classifier.forward(clip_images)
+
+        # Reconstruction losses
+        rec_loss = reconstruction_loss(
+            rebuilt_images,
+            images,
+            rebuilt_classes,
+            classes,
+            params.gamma,
+            params.beta,
+        )
+
+        clip_rec_loss = reconstruction_loss(
+            clip_images,
+            images,
+            clip_classes,
+            classes,
+            params.gamma,
+            params.beta,
+        )
+
+        concept2clip_loss = F.mse_loss(clip_embeddings, rebuilt_clip_embeddings)
+
+        total_loss = (
+            acc_loss + cr_loss + of_loss + ortho_loss + rec_loss + clip_rec_loss + concept2clip_loss
+        )
+
+        ###################################################
+        #                 BACKPROPAGATION                 #
+        ###################################################
+
+        total_loss.backward()
+
+        # Step the optimizers
+        if accumulator.step():
+            optimizer.step()
+            concept2clip_optimizer.step()
+
+            optimizer.zero_grad()
+            concept2clip_optimizer.zero_grad()
+
+        ###################################################
+        #                      TESTING                    #
+        ###################################################
+
+        # Every 2000 iterations, test the models
+        if i % 2000 == 0:
+
+            # Compare classifier prediction on the original vs reconstructed images
+            inter_loss = cross_cross_entropy_loss(rebuilt_classes, classes)
+            results = TrainingResults(
+                acc_loss.item(),
+                cr_loss.item(),
+                of_loss.item(),
+                ortho_loss.item(),
+                rec_loss.item(),
+                gan_loss=0.0,  # No GAN loss in diffusion
+                inter_loss=inter_loss.item(),
+            )
+
+            data = {f"train_{key}": value for key, value in results.__dict__.items()}
+
+            test_results = test_viscoin_diffusion(
+                classifier,
+                concept_extractor,
+                explainer,
+                diffusion_pipeline,
+                concept2clip,
+                test_loader,
+                device,
+                params.batch_size,
+                post_diffusion_transform,
+                verbose=False,
+            )
+
+            # Merge the training and testing results
+            data.update({f"test_{key}": value for key, value in test_results.__dict__.items()})
+            logger.info(json.dumps(data))
+
+        # Every 20_000 iterations, save the model checkpoints
+        # NOTE: was 50_000 in the original code
+        if i % 20_000 == 0:
+            save_viscoin_diffusion(
+                classifier,
+                concept_extractor,
+                explainer,
+                concept2clip,
+                f"viscoin{i//20_000}-{params.iterations//20_000}.pth",
             )

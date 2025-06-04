@@ -36,6 +36,7 @@ DEFAULT_CHECKPOINTS = {
         "gan": f"checkpoints/{dataset}/gan-{dataset}.pkl",
         "gan_adapted": f"checkpoints/{dataset}/gan-adapted-{dataset}.pkl",
         "viscoin": f"checkpoints/{dataset}/viscoin-{dataset}.pkl",
+        "concept2clip": f"checkpoints/{dataset}/concept2clip1024.pt",
     }
     for dataset in DATASET_CLASSES.keys()
 }

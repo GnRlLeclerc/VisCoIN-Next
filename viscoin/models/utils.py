@@ -192,6 +192,24 @@ def save_viscoin(
     torch.save(checkpoints, path)
 
 
+def save_viscoin_diffusion(
+    classifier: Classifier,
+    concept_extractor: ConceptExtractor,
+    explainer: Explainer,
+    concept2clip: torch.nn.Module,
+    path: str,
+):
+    """Jointly save the checkpoints of the VisCoIN models."""
+    checkpoints = {
+        "classifier": classifier.state_dict(),
+        "concept_extractor": concept_extractor.state_dict(),
+        "explainer": explainer.state_dict(),
+        "concept2clip": concept2clip.state_dict(),
+    }
+
+    torch.save(checkpoints, path)
+
+
 def load_viscoin(
     classifier: Classifier,
     concept_extractor: ConceptExtractor,

@@ -30,8 +30,14 @@ from viscoin.models.gan import GeneratorAdapted
 from viscoin.models.utils import load_viscoin_pickle
 from viscoin.training.classifiers import ClassifierTrainingParams, train_classifier
 from viscoin.training.concept2clip import Concept2ClipTrainingParams, train_concept2clip
-from viscoin.training.viscoin import VisCoINTrainingParams, train_viscoin
+from viscoin.training.viscoin import VisCoINTrainingParams, train_viscoin, train_viscoin_diffusion
 from viscoin.utils.logging import configure_score_logging
+
+
+from diffusers import (
+    StableDiffusionXLPipeline,
+)
+from ip_adapter import IPAdapterXL
 
 
 @click.command()
@@ -100,6 +106,16 @@ def train(
 
         case "viscoin":
             _train_viscoin(
+                dataset,
+                device,
+                learning_rate,
+                epochs,
+                batch_size,
+                gradient_accumulation_steps,
+            )
+
+        case "viscoin-diffusion":
+            _train_viscoin_diffusion(
                 dataset,
                 device,
                 learning_rate,
@@ -228,6 +244,66 @@ def _train_viscoin(
         explainer.to(device),
         viscoin_gan.to(device),
         generator_gan.to(device),
+        train,
+        test,
+        params,
+    )
+
+
+def _train_viscoin_diffusion(
+    dataset: DatasetType,
+    device: str,
+    learning_rate: float | None,
+    epochs: int | None,
+    batch_size: int | None,
+    gradient_accumulation_steps: int | None,
+):
+    """Train a VisCoIN model with diffusion"""
+
+    # Load the pre-trained models
+    viscoin_models = load_viscoin_pickle(DEFAULT_CHECKPOINTS[dataset]["viscoin"])
+
+    base_model_path = "stabilityai/sdxl-turbo"
+
+    image_encoder_path = "laion/CLIP-ViT-H-14-laion2B-s32B-b79K"
+
+    ip_ckpt = "checkpoints/ip-adapter_sdxl_vit-h.bin"
+
+    pipe = StableDiffusionXLPipeline.from_pretrained(
+        base_model_path,
+        torch_dtype=torch.float16,
+        variant="fp16",
+    )
+
+    # load ip-adapter
+    ip_model = IPAdapterXL(pipe, image_encoder_path, ip_ckpt, device)
+
+    concept2clip = torch.load(DEFAULT_CHECKPOINTS[dataset]["concept2clip"], weights_only=False).to(
+        device
+    )
+
+    clip = CLIP("ViT-H/14").to(device)
+
+    # Using the default parameters for training on CUB
+    params = VisCoINTrainingParams(
+        learning_rate=learning_rate,  # type: ignore
+        iterations=epochs,  # type: ignore
+        gradient_accumulation=gradient_accumulation_steps,  # type: ignore
+        batch_size=batch_size,  # type: ignore
+    )
+
+    configure_score_logging(f"viscoin_diffusion_{params.iterations}.jsonl")
+
+    train, test = get_dataloaders(dataset, params.batch_size)
+
+    # The training saves the viscoin model regularly
+    train_viscoin_diffusion(
+        viscoin_models.classifier.to(device),
+        viscoin_models.concept_extractor.to(device),
+        viscoin_models.explainer.to(device),
+        ip_model,
+        concept2clip,
+        clip,
         train,
         test,
         params,
