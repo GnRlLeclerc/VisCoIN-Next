@@ -3,6 +3,7 @@ import os
 from typing import Literal
 
 import kagglehub
+import numpy as np
 from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
@@ -34,7 +35,6 @@ class FFHQDataset(Dataset):
             transform: Test, train or custom transforms for images.
             attr: The attribute to use for the labels. Defaults to gender.
         """
-
         self.dataset_path = kagglehub.dataset_download("denislukovnikov/ffhq256-images-only")
         self.dataset_path = os.path.join(self.dataset_path, "ffhq256")
         self.image_cache = {}
@@ -51,6 +51,11 @@ class FFHQDataset(Dataset):
                 transform = RESNET_TEST_TRANSFORM
         self.transform = transform
 
+        # Load train test split
+        indexes = np.loadtxt("viscoin/datasets/ffhq_split.txt", dtype=int, delimiter=" ")
+        self.train_indexes = indexes[indexes[:, 1] == 1][:, 0]
+        self.test_indexes = indexes[indexes[:, 1] == 0][:, 0]
+
     def load_image(self, index: int) -> tuple[Tensor, Tensor]:
         """Loads an image from the dataset at the given index."""
         image_path = os.path.join(self.dataset_path, f"{index:05d}.png")
@@ -66,9 +71,16 @@ class FFHQDataset(Dataset):
         return image, label  # type: ignore
 
     def __len__(self) -> int:
-        return 70_000
+        """Returns the length of the dataset (depends on the test/train mode)."""
+
+        if self.mode == "train":
+            return len(self.train_indexes)
+        return len(self.test_indexes)
 
     def __getitem__(self, index: int) -> tuple[Tensor, Tensor]:
+
+        # Get the absolute index
+        index = self.train_indexes[index] if self.mode == "train" else self.test_indexes[index]
 
         if index in self.image_cache:
             image = self.image_cache[index]

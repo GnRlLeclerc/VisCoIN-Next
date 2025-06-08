@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from torchvision.transforms.transforms import Compose
 from tqdm import tqdm
 
-from viscoin.datasets.utils import get_dataloaders
+from viscoin.datasets.utils import DatasetType, get_dataloaders
 
 
 def _img_cache(mode: Literal["train", "test"], dataset: str, model: str) -> str:
@@ -64,7 +64,7 @@ class CLIP(nn.Module):
         return self.model.encode_text(x)
 
     def compute_image_embeddings(
-        self, dataset: Literal["cub", "funnybirds"], device: str = "cuda"
+        self, dataset: DatasetType, device: str = "cuda"
     ) -> tuple[Tensor, Tensor]:
         """Compute CLIP embeddings on the given datasets.
         We define this helper because CLIP needs its own transforms,
