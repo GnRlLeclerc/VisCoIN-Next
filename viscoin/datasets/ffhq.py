@@ -1,4 +1,6 @@
+import json
 import os
+from typing import Literal
 
 import kagglehub
 from PIL import Image
@@ -14,17 +16,30 @@ from viscoin.utils.types import Mode
 
 Compose = ComposeV1 | ComposeV2
 
+AttrFFHQ = Literal["smile", "gender", "age", "glasses", "emotion", "makeup", "hair"]
+
 
 class FFHQDataset(Dataset):
     """FFHQ dataset with features annotations from https://github.com/DCGM/ffhq-features-dataset.
 
     The dataset contains images of shape 256x256 pixels."""
 
-    def __init__(self, mode: Mode = "train", transform: Compose | None = None) -> None:
+    def __init__(
+        self, mode: Mode = "train", transform: Compose | None = None, attr: AttrFFHQ = "gender"
+    ) -> None:
+        """Instanciate a FFHQ dataset.
+
+        Args:
+            mode: Whether to consider training or testing data. Defaults to "train".
+            transform: Test, train or custom transforms for images.
+            attr: The attribute to use for the labels. Defaults to gender.
+        """
 
         self.dataset_path = kagglehub.dataset_download("denislukovnikov/ffhq256-images-only")
         self.dataset_path = os.path.join(self.dataset_path, "ffhq256")
         self.image_cache = {}
+        self.label_cache = {}
+        self.attr = attr
 
         self.mode = mode
 
@@ -36,22 +51,70 @@ class FFHQDataset(Dataset):
                 transform = RESNET_TEST_TRANSFORM
         self.transform = transform
 
-    def load_image(self, index: int) -> Tensor:
+    def load_image(self, index: int) -> tuple[Tensor, Tensor]:
         """Loads an image from the dataset at the given index."""
         image_path = os.path.join(self.dataset_path, f"{index:05d}.png")
         image = self.transform(Image.open(image_path).convert("RGB"))
+        self.image_cache[index] = image
 
-        return image  # type: ignore
+        label_path = os.path.join("ffhq-annotations", "json", f"{index:05d}.json")
+        with open(label_path, "r") as f:
+            json_labels = json.load(f)
+            label = _extract_attr(json_labels[0], self.attr)
+            self.label_cache[index] = label
+
+        return image, label  # type: ignore
 
     def __len__(self) -> int:
         return 70_000
 
-    def __getitem__(self, index: int) -> Tensor:
+    def __getitem__(self, index: int) -> tuple[Tensor, Tensor]:
 
         if index in self.image_cache:
             image = self.image_cache[index]
+            label = self.label_cache[index]
         else:
-            image = self.load_image(index)
-            self.image_cache[index] = image
+            image, label = self.load_image(index)
 
-        return image
+        return image, label
+
+
+def _extract_attr(label: dict, attr: AttrFFHQ) -> Tensor:
+    """Extract the attribute of interest from the label dictionary."""
+
+    fa = label["faceAttributes"]
+    emo = fa["emotion"]
+
+    match attr:
+        case "age":
+            return Tensor(fa["age"])
+        case "gender":
+            return Tensor(1.0 if fa["male"] else 0.0)
+        case "glasses":
+            return Tensor(1.0 if fa["glasses"] != "NoGlasses" else 0.0)
+        case "hair":
+            return Tensor(1 - fa["hair"]["bald"])
+        case "smile":
+            return Tensor(fa["smile"])
+        case "makeup":
+            # 2 values: eye & lip
+            return Tensor(
+                [
+                    float(fa["makeup"]["eyeMakeup"]),
+                    float(fa["makeup"]["lipMakeup"]),
+                ]
+            )
+        case "emotion":
+            # One-hot encoding of the emotion
+            return Tensor(
+                [
+                    float(emo["anger"]),
+                    float(emo["contempt"]),
+                    float(emo["disgust"]),
+                    float(emo["fear"]),
+                    float(emo["happiness"]),
+                    float(emo["neutral"]),
+                    float(emo["sadness"]),
+                    float(emo["surprise"]),
+                ]
+            )

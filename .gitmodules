@@ -1,3 +1,6 @@
 [submodule "stylegan2_ada"]
     path = stylegan2_ada
     url = https://github.com/NVlabs/stylegan2-ada-pytorch
+[submodule "ffhq-annotations"]
+	path = ffhq-annotations
+	url = git@github.com:DCGM/ffhq-features-dataset.git
