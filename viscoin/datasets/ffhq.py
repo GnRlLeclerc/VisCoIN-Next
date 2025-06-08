@@ -5,7 +5,7 @@ from typing import Literal
 import kagglehub
 import numpy as np
 from PIL import Image
-from torch import Tensor
+from torch import Tensor, tensor
 from torch.utils.data import Dataset
 from torchvision.transforms import (
     Compose as ComposeV1,  # for the CLIP model that uses legacy compose
@@ -99,18 +99,18 @@ def _extract_attr(label: dict, attr: AttrFFHQ) -> Tensor:
 
     match attr:
         case "age":
-            return Tensor(fa["age"])
+            return tensor(fa["age"])
         case "gender":
-            return Tensor(1.0 if fa["male"] else 0.0)
+            return tensor(1.0 if fa["gender"] == "male" else 0.0)
         case "glasses":
-            return Tensor(1.0 if fa["glasses"] != "NoGlasses" else 0.0)
+            return tensor(1.0 if fa["glasses"] != "NoGlasses" else 0.0)
         case "hair":
-            return Tensor(1 - fa["hair"]["bald"])
+            return tensor(1 - fa["hair"]["bald"])
         case "smile":
-            return Tensor(fa["smile"])
+            return tensor(fa["smile"])
         case "makeup":
             # 2 values: eye & lip
-            return Tensor(
+            return tensor(
                 [
                     float(fa["makeup"]["eyeMakeup"]),
                     float(fa["makeup"]["lipMakeup"]),
@@ -118,7 +118,7 @@ def _extract_attr(label: dict, attr: AttrFFHQ) -> Tensor:
             )
         case "emotion":
             # One-hot encoding of the emotion
-            return Tensor(
+            return tensor(
                 [
                     float(emo["anger"]),
                     float(emo["contempt"]),
