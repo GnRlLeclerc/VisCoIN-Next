@@ -141,7 +141,6 @@
                 tqdm
                 numpy
                 lpips
-                clip
                 ipykernel
                 scikit-learn
                 open-clip-torch
