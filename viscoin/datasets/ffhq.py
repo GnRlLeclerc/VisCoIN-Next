@@ -5,6 +5,7 @@ from typing import Literal
 import kagglehub
 import numpy as np
 from PIL import Image
+import torch
 from torch import Tensor, tensor
 from torch.utils.data import Dataset
 from torchvision.transforms import (
@@ -65,7 +66,10 @@ class FFHQDataset(Dataset):
         label_path = os.path.join("ffhq-annotations", "json", f"{index:05d}.json")
         with open(label_path, "r") as f:
             json_labels = json.load(f)
-            label = _extract_attr(json_labels[0], self.attr)
+            if len(json_labels) == 0:
+                label = _default(self.attr)
+            else:
+                label = _extract_attr(json_labels[0], self.attr)
             self.label_cache[index] = label
 
         return image, label  # type: ignore
@@ -130,3 +134,15 @@ def _extract_attr(label: dict, attr: AttrFFHQ) -> Tensor:
                     float(emo["surprise"]),
                 ]
             )
+
+
+def _default(attr: AttrFFHQ) -> Tensor:
+    """Default value for the attribute if it is missing from the dataset."""
+
+    match attr:
+        case "age" | "gender" | "glasses" | "hair" | "smile":
+            return tensor(0.0)
+        case "makeup":
+            return torch.zeros(2)
+        case "emotion":
+            return torch.zeros(8)
