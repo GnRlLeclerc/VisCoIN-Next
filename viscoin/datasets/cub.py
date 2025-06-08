@@ -48,7 +48,7 @@ class CUB_200_2011(Dataset):
         self.dataset_path = os.path.join(
             kagglehub.dataset_download("wenewone/cub2002011"), "CUB_200_2011"
         )
-        self.mode: Mode = mode
+        self.mode = mode
         self.bbox_only = bbox_only
 
         # Load appropriate transformations if none are provided
