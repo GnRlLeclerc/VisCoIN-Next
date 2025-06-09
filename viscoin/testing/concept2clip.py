@@ -53,7 +53,7 @@ def test_concept2clip(
             # Update metrics
             loss += F.mse_loss(output, embeddings).item() / batch_size
             # No need to divide by batch size, cosine matching is already normalized
-            matching_accuracy += cosine_matching(output, embeddings)
+            matching_accuracy += cosine_matching(embeddings, output)
 
     loss /= len(loader)
     matching_accuracy /= len(loader)
