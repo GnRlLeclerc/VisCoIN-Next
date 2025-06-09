@@ -98,5 +98,5 @@ def dataset(func):
         "--dataset",
         help="The dataset to use",
         default="cub",
-        type=click.Choice(["cub", "funnybirds"]),
+        type=click.Choice(["cub", "funnybirds", "ffhq"]),
     )(func)
