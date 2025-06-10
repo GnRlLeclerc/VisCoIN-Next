@@ -49,7 +49,7 @@ class CLIP(nn.Module):
         self.model: open_clip.model.CLIP = model  # type: ignore
         self.preprocess: Compose = preprocess  # type: ignore
         self.tokenizer: open_clip.tokenizer.SimpleTokenizer = tokenizer  # type: ignore
-        self.embedding_size = model.visual.output_dim
+        self.embedding_size = int(model.visual.output_dim)
 
     def encode_image(self, x: Tensor) -> Tensor:
         return self.model.encode_image(x)
@@ -158,7 +158,7 @@ class CLIP(nn.Module):
         token_dataset = TensorDataset(text)
         dataloader = DataLoader(token_dataset, batch_size)
 
-        embeddings = torch.zeros((len(captions), self.embedding_size))
+        embeddings = torch.zeros((len(captions), self.embedding_size))  # type: ignore
 
         for i, batch in enumerate(
             tqdm(

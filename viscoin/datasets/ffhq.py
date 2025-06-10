@@ -4,8 +4,8 @@ from typing import Literal
 
 import kagglehub
 import numpy as np
-from PIL import Image
 import torch
+from PIL import Image
 from torch import Tensor, tensor
 from torch.utils.data import Dataset
 from torchvision.transforms import (
@@ -40,7 +40,7 @@ class FFHQDataset(Dataset):
         self.dataset_path = os.path.join(self.dataset_path, "ffhq256")
         self.image_cache = {}
         self.label_cache = {}
-        self.attr = attr
+        self.attr: AttrFFHQ = attr
 
         self.mode = mode
 
