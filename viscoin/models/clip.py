@@ -49,7 +49,7 @@ class CLIP(nn.Module):
         self.model: open_clip.model.CLIP = model  # type: ignore
         self.preprocess: Compose = preprocess  # type: ignore
         self.tokenizer: open_clip.tokenizer.SimpleTokenizer = tokenizer  # type: ignore
-        self.embedding_size = int(model.visual.output_dim)
+        self.embedding_size = int(model.visual.output_dim)  # type: ignore
 
     def encode_image(self, x: Tensor) -> Tensor:
         return self.model.encode_image(x)
