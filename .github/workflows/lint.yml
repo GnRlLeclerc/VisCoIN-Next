@@ -37,7 +37,7 @@ jobs:
         run: uv sync --locked --all-extras --dev
 
       - name: Run Pyright
-        run: uvx pyright ./viscoin
+        run: uv run pyright ./viscoin
 
       - name: Run isort
-        run: uvx isort ./viscoin --check-only --diff
+        run: uv run isort ./viscoin --check-only --diff
