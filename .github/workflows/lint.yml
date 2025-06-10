@@ -34,7 +34,7 @@ jobs:
           python-version-file: ".python-version"
 
       - name: Run Pyright
-        run: uv run pyright ./viscoin
+        run: uvx pyright ./viscoin
 
       - name: Run isort
-        run: uv run isort ./viscoin --check-only --diff
+        run: uvx isort ./viscoin --check-only --diff
