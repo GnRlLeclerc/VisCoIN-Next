@@ -33,6 +33,9 @@ jobs:
         with:
           python-version-file: ".python-version"
 
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
+
       - name: Run Pyright
         run: uvx pyright ./viscoin
 
