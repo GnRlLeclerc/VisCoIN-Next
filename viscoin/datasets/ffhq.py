@@ -4,6 +4,7 @@ from typing import Literal
 
 import kagglehub
 import numpy as np
+from numpy import round
 import torch
 from PIL import Image
 from torch import Tensor, tensor
@@ -103,21 +104,21 @@ def _extract_attr(label: dict, attr: AttrFFHQ) -> Tensor:
 
     match attr:
         case "age":
-            return tensor(fa["age"])
+            return tensor(float(fa["age"]))
         case "gender":
-            return tensor(1.0 if fa["gender"] == "male" else 0.0)
+            return tensor(1 if fa["gender"] == "male" else 0)
         case "glasses":
-            return tensor(1.0 if fa["glasses"] != "NoGlasses" else 0.0)
+            return tensor(1 if fa["glasses"] != "NoGlasses" else 0)
         case "hair":
-            return tensor(1 - fa["hair"]["bald"])
+            return tensor(1 - round(fa["hair"]["bald"]))
         case "smile":
-            return tensor(fa["smile"])
+            return tensor(round(fa["smile"]))
         case "makeup":
             # 2 values: eye & lip
             return tensor(
                 [
-                    float(fa["makeup"]["eyeMakeup"]),
-                    float(fa["makeup"]["lipMakeup"]),
+                    round(fa["makeup"]["eyeMakeup"]),
+                    round(fa["makeup"]["lipMakeup"]),
                 ]
             )
         case "emotion":

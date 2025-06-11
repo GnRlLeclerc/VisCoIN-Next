@@ -47,7 +47,7 @@ def test_classifier(
             preds = outputs.argmax(dim=1, keepdim=True)
 
             # Update metrics
-            total_correct += preds.eq(targets.view_as(preds)).sum().item()
+            total_correct += preds.eq(targets).sum().item()
             total_loss += criterion(outputs, targets).item()
             total_samples += targets.size(0)
 
