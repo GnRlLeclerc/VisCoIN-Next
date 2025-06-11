@@ -4,8 +4,8 @@ from typing import Literal
 
 import kagglehub
 import numpy as np
-from numpy import round
 import torch
+from numpy import round
 from PIL import Image
 from torch import Tensor, tensor
 from torch.utils.data import Dataset
