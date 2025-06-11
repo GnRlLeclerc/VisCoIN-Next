@@ -36,7 +36,6 @@ def test_classifier(
     with torch.no_grad():
         total_correct = 0
         total_loss = 0
-        total_samples = 0
 
         for inputs, targets in tqdm(dataloader, desc="Test batches", disable=not verbose):
             # Move batch to device
@@ -44,14 +43,14 @@ def test_classifier(
 
             # Compute logits & predictions
             outputs, _ = model.forward(inputs)
-            preds = outputs.argmax(dim=1, keepdim=True)
+            preds = outputs.argmax(dim=1)
 
-            # Update metrics
-            total_correct += preds.eq(targets).sum().item()
+            # Update metrics (averaged over batches)
+            batch_size = targets.size(0)
+            total_correct += (preds == targets).sum().item() / batch_size
             total_loss += criterion(outputs, targets).item()
-            total_samples += targets.size(0)
 
-    accuracy = total_correct / total_samples
+    accuracy = total_correct / len(dataloader)
     batch_mean_loss = total_loss / len(dataloader)
 
     return accuracy, batch_mean_loss
