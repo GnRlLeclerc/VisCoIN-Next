@@ -27,7 +27,7 @@ class FFHQDataset(Dataset):
     The dataset contains images of shape 256x256 pixels."""
 
     def __init__(
-        self, mode: Mode = "train", transform: Compose | None = None, attr: AttrFFHQ = "emotion"
+        self, mode: Mode = "train", transform: Compose | None = None, attr: AttrFFHQ = "gender"
     ) -> None:
         """Instanciate a FFHQ dataset.
 

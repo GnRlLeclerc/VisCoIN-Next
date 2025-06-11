@@ -28,7 +28,7 @@ DatasetType = Literal["cub", "funnybirds", "ffhq"]
 DATASET_CLASSES = {
     "cub": 200,
     "funnybirds": 50,
-    "ffhq": 8,  # 8 emotions
+    "ffhq": 2,  # 2 genders
 }
 
 DEFAULT_CHECKPOINTS = {
