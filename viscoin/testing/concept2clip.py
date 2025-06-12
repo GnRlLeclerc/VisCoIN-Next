@@ -36,9 +36,6 @@ def test_concept2clip(
     """
 
     concept2clip.eval()
-    batch_size = loader.batch_size
-
-    assert batch_size is not None
 
     with torch.no_grad():
         loss = 0

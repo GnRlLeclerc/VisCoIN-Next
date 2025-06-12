@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "click>=8.2.1",
+  "gdown>=5.2.0",
   "ipykernel>=6.29.5",
   "kagglehub>=0.3.12",
   "lpips>=0.1.4",
@@ -17,6 +18,8 @@ dependencies = [
   "pandas>=2.3.0",
   "pillow>=11.2.1",
   "scikit-learn>=1.7.0",
+  "scipy>=1.15.3",
+  "tensorboard>=2.19.0",
   "torch>=2.7.1",
   "torchvision>=0.22.1",
   "tqdm>=4.67.1",
@@ -27,11 +30,8 @@ dependencies = [
 line-length = 100
 
 [tool.isort]
-profile = "black"        # Optional: align with Black's formatting style
-skip = ["stylegan2_ada"]
+profile = "black"                      # Optional: align with Black's formatting style
+skip = ["stylegan2_ada", "hyperstyle"]
 
 [dependency-groups]
-dev = [
-    "isort>=6.0.1",
-    "pyright>=1.1.401",
-]
+dev = ["isort>=6.0.1", "pyright>=1.1.401"]
