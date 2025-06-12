@@ -1,8 +1,5 @@
 """
 Helper functions for the HyperStyle model.
-
-TODO : tester ça ici, vérifier si le path est correct, etc
-
 """
 
 import os
@@ -23,6 +20,8 @@ from hyperstyle.utils.model_utils import load_model
 TRANSFORM = transforms.Compose(
     [
         transforms.Resize((256, 256)),
+        transforms.ToImage(),
+        transforms.ToDtype(torch.float32, scale=True),
         transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
     ]
