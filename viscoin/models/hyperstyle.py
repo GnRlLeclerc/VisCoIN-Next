@@ -29,7 +29,6 @@ TRANSFORM = transforms.Compose(
         transforms.Resize((256, 256)),
         transforms.ToImage(),
         transforms.ToDtype(torch.float32, scale=True),
-        transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
     ]
 )
