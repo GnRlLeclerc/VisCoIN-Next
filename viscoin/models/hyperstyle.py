@@ -11,6 +11,13 @@ import torch
 import torchvision.transforms.v2 as transforms
 from torch import Tensor
 
+
+# Add hyperstyle submodule to the python path so that imports within this submodule work properly
+def fix_path():
+    pass  # Pass because the following line will be executed.
+    # Use this function as a way to prevent isort from placing the stylegan import before this import
+
+
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "hyperstyle"))
 
 from hyperstyle.models.hyperstyle import HyperStyle
