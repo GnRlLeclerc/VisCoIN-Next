@@ -99,7 +99,7 @@ def generate(model: HyperStyle, w_plus: Tensor, weights_deltas: list[Tensor | No
     decoder = model.decoder
 
     image, _ = decoder.forward(
-        w_plus,
+        [w_plus],
         weights_deltas=weights_deltas,
         randomize_noise=False,
         input_is_latent=True,
