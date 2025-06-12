@@ -141,10 +141,10 @@
                 tqdm
                 numpy
                 lpips
-                clip
                 ipykernel
                 scikit-learn
                 open-clip-torch
+                gdown
 
                 # GTK backend for matplotlib
                 pygobject3

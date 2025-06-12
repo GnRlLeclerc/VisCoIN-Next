@@ -43,8 +43,8 @@ def concept_heatmaps(device: str, viscoin_pickle_path: str):
     images = torch.zeros(n_samples, 3, 256, 256).to(device)
     labels = torch.zeros(n_samples, dtype=torch.int64).to(device)
     for i, index in enumerate(indices):
-        images[i] = dataset[index][0].to(device)
-        labels[i] = dataset[index][1]
+        images[i] = dataset[index][0].to(device)  # type: ignore
+        labels[i] = dataset[index][1]  # type: ignore
 
     # Do a forward pass
     _, hidden_states = classifier.forward(images)

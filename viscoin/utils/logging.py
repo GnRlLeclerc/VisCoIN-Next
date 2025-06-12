@@ -15,4 +15,15 @@ def configure_score_logging(log_path: str):
     Args:
         log_path (str): Path to the log file.
     """
-    logging.basicConfig(level=logging.INFO, filemode="w", format="%(message)s", filename=log_path)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+    # Clear existing handlers if any
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    handler = logging.FileHandler(log_path, mode="w")
+    formatter = logging.Formatter("%(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)

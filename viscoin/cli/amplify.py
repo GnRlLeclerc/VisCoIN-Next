@@ -61,7 +61,7 @@ def amplify(
     else:
         indices = rd.choice(len(dataset), n_samples, replace=False)
 
-    originals = [dataset[i][0].to(device) for i in indices]
+    originals = [dataset[i][0].to(device) for i in indices]  # type: ignore
     amplified: list[list[Tensor]] = []
 
     if concept_indices is not None:

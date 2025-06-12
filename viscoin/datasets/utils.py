@@ -22,12 +22,13 @@ from viscoin.datasets.transforms import RESNET_TEST_TRANSFORM, RESNET_TRAIN_TRAN
 
 Compose = ComposeV1 | ComposeV2
 
-DatasetType = Literal["cub", "funnybirds"]
+DatasetType = Literal["cub", "funnybirds", "ffhq"]
 
 
 DATASET_CLASSES = {
     "cub": 200,
     "funnybirds": 50,
+    "ffhq": 2,  # 2 genders
 }
 
 DEFAULT_CHECKPOINTS = {
@@ -144,6 +145,12 @@ def get_datasets(
 
             train = FunnyBirds("train", transform=train_tf)
             test = FunnyBirds("test", transform=test_tf)
+
+        case "ffhq":
+            from viscoin.datasets.ffhq import FFHQDataset
+
+            train = FFHQDataset("train", transform=train_tf)
+            test = FFHQDataset("test", transform=test_tf)
 
         case _:
             raise ValueError(f"Unknown dataset: {name}")

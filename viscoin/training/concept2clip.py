@@ -119,7 +119,7 @@ def train_concept2clip(
             optimizer.step()
 
             # Accumulate loss for metrics
-            train_loss += loss.item() / batch_size
+            train_loss += loss.item()
 
         # Compute the mean loss for this epoch
         train_loss /= len(train_loader)
