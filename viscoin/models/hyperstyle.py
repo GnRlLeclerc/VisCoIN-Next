@@ -5,11 +5,15 @@ Helper functions for the HyperStyle model.
 import os
 import sys
 from argparse import Namespace
+from typing import Literal
 
 import gdown
 import torch
 import torchvision.transforms.v2 as transforms
 from torch import Tensor
+from tqdm import tqdm
+
+from viscoin.datasets.utils import DatasetType, get_dataloaders
 
 
 # Add hyperstyle submodule to the python path so that imports within this submodule work properly
@@ -76,10 +80,13 @@ def compute_latents(
         result_deltas: List of weight deltas for the decoder.
     """
 
+    if len(image.shape) == 3:
+        image = image.unsqueeze(0)
+
     with torch.no_grad():
         # Run the inversion to get the latent code and weight shifts
         _, _, result_deltas, code = run_inversion(  # type: ignore
-            image.unsqueeze(0).cuda(),
+            image.cuda(),
             model,
             opts,
         )
@@ -105,6 +112,45 @@ def generate(model: HyperStyle, w_plus: Tensor, weights_deltas: list[Tensor | No
     )
 
     return image
+
+
+def _w_plus_cache(dataset: DatasetType, mode: Literal["train", "test"]) -> str:
+    return os.path.join("checkpoints", dataset, f"w_plus_{dataset}_{mode}.pt")
+
+
+def compute_w_plus_for_dataset(dataset: DatasetType, batch_size: int) -> tuple[Tensor, Tensor]:
+    """Compute the W+ code for all images in a dataset, split between train and test.
+
+    The results are cached (TODO)
+    """
+    try:
+        train = torch.load(_w_plus_cache(dataset, "train"), weights_only=True)
+        test = torch.load(_w_plus_cache(dataset, "test"), weights_only=True)
+
+        return train, test
+    except FileNotFoundError:
+        pass
+
+    train, test = get_dataloaders(dataset, batch_size, None, shuffle=False)
+
+    model, opts = load_hyperstyle()
+
+    train_w_plus = torch.empty((len(train.dataset), 18, 512), dtype=torch.float32)  # type: ignore
+    test_w_plus = torch.empty((len(test.dataset), 18, 512), dtype=torch.float32)  # type: ignore
+
+    for i, (images, _) in enumerate(tqdm(train, desc=f"Computing W+ for {dataset} train set")):
+        codes, _ = compute_latents(model, opts, images.cuda())
+        train_w_plus[i * batch_size : (i + 1) * batch_size] = codes.cpu().detach()
+
+    for i, (images, _) in enumerate(tqdm(test, desc=f"Computing W+ for {dataset} test set")):
+        codes, _ = compute_latents(model, opts, images.cuda())
+        test_w_plus[i * batch_size : (i + 1) * batch_size] = codes.cpu().detach()
+
+    # Save the results to cache
+    torch.save(train_w_plus, _w_plus_cache(dataset, "train"))
+    torch.save(test_w_plus, _w_plus_cache(dataset, "test"))
+
+    return train_w_plus, test_w_plus
 
 
 def download_hyperstyle(path: str):
