@@ -34,3 +34,29 @@ def cosine_matching(original: Tensor, rebuilt: Tensor) -> float:
     correct = torch.sum(highest.values == diagonal)
 
     return correct.item() / original.shape[0]
+
+
+def logits_accuracy(logits: Tensor, targets: Tensor) -> float:
+    """Compute the accuracy of predicted logits against targets logits.
+    Useful to evaluate output fidelity of an explainer vs a classifier.
+
+    Args:
+        logits (batch_size, num_classes): Predicted logits
+        targets (batch_size, num_classes): Ground truth logits
+
+    Returns:
+        accuracy in [0, 1]
+    """
+
+    assert logits.shape == targets.shape, "Logits and targets must have the same shape"
+    assert logits.dim() == 2, "Logits and targets must be 2D"
+
+    # Get the predicted class indices
+    predicted_classes = logits.argmax(dim=1)
+    target_classes = targets.argmax(dim=1)
+
+    # Compute the accuracy
+    correct_predictions = (predicted_classes == target_classes).sum().item()
+    accuracy = correct_predictions / logits.size(0)
+
+    return accuracy

@@ -147,6 +147,7 @@ def compute_w_plus_for_dataset(dataset: DatasetType, batch_size: int) -> tuple[T
         test_w_plus[i * batch_size : (i + 1) * batch_size] = codes.cpu().detach()
 
     # Save the results to cache
+    os.makedirs(os.path.dirname(_w_plus_cache(dataset, "train")), exist_ok=True)
     torch.save(train_w_plus, _w_plus_cache(dataset, "train"))
     torch.save(test_w_plus, _w_plus_cache(dataset, "test"))
 
