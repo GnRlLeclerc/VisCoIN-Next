@@ -11,6 +11,7 @@ from typing import Literal
 
 import kagglehub
 import requests
+from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import (
     Compose as ComposeV1,  # for the CLIP model that uses legacy compose
@@ -22,12 +23,13 @@ from viscoin.datasets.transforms import RESNET_TEST_TRANSFORM, RESNET_TRAIN_TRAN
 
 Compose = ComposeV1 | ComposeV2
 
-DatasetType = Literal["cub", "funnybirds"]
+DatasetType = Literal["cub", "funnybirds", "ffhq"]
 
 
 DATASET_CLASSES = {
     "cub": 200,
     "funnybirds": 50,
+    "ffhq": 2,  # 2 genders
 }
 
 DEFAULT_CHECKPOINTS = {
@@ -145,6 +147,12 @@ def get_datasets(
             train = FunnyBirds("train", transform=train_tf)
             test = FunnyBirds("test", transform=test_tf)
 
+        case "ffhq":
+            from viscoin.datasets.ffhq import FFHQDataset
+
+            train = FFHQDataset("train", transform=train_tf)
+            test = FFHQDataset("test", transform=test_tf)
+
         case _:
             raise ValueError(f"Unknown dataset: {name}")
 
@@ -182,3 +190,29 @@ def get_dataloaders(
     return DataLoader(train, batch_size, shuffle=shuffle), DataLoader(
         test, batch_size, shuffle=shuffle
     )
+
+
+class MergedDataset(Dataset):
+    def __init__(self, *datasets: Dataset | Tensor) -> None:
+        """Merge multiple datasets or tensors into a single dataset.
+        Useful for training a complex model ensemble where multiple targets, precomputed features,
+        etc, must be shuffled together."""
+        super().__init__()
+
+        self.datasets = datasets
+
+    def __len__(self) -> int:
+        return len(self.datasets[0])  # type: ignore
+
+    def __getitem__(self, index: int) -> list:
+        """Get the item at the given index from all datasets."""
+
+        elements = []
+
+        for dataset in self.datasets:
+            if isinstance(dataset, Dataset):
+                elements.extend(dataset[index])
+            else:
+                elements.append(dataset[index])
+
+        return elements

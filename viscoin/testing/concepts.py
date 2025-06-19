@@ -164,12 +164,12 @@ def test_concepts(
             encoded_concepts, _ = concept_extractor.forward(latent[-3:])
             explainer_classes = explainer.forward(encoded_concepts)
 
-        preds = classes.argmax(dim=1, keepdim=True)
-        preds_expl = explainer_classes.argmax(dim=1, keepdim=True)
+        preds = classes.argmax(dim=1)
+        preds_expl = explainer_classes.argmax(dim=1)
 
         # Compute the accuracy
-        classifier_accuracy = preds.eq(labels.view_as(preds)).sum().item() / len(labels)
-        explainer_accuracy = preds_expl.eq(labels.view_as(preds_expl)).sum().item() / len(labels)
+        classifier_accuracy = (preds == labels).sum().item() / len(labels)
+        explainer_accuracy = (preds_expl == labels).sum().item() / len(labels)
         classifier_accuracies.append(classifier_accuracy)
         explainer_accuracies.append(explainer_accuracy)
 

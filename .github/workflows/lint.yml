@@ -20,21 +20,24 @@ jobs:
           fetch-depth: 0 # Ensure full history is fetched, useful if submodules require it
           persist-credentials: false # Avoids using GitHub's default credentials for submodules, preventing permission issues
 
-      - name: Setup conda environment
-        uses: mamba-org/setup-micromamba@v1
+      - name: Install uv package manager
+        uses: astral-sh/setup-uv@v5
         with:
-          environment-file: conda.yml
-          environment-name: viscoin
-          cache-environment: true
-          cache-downloads: true
-          # https://github.com/mamba-org/setup-micromamba/issues/130
-          generate-run-shell: false
+          # Install a specific version of uv.
+          version: "0.7.12"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
-      - name: Install Pyright and Isort
-        run: pip install pyright isort
+      - name: "Set up Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
 
       - name: Run Pyright
-        run: micromamba run -n viscoin pyright ./viscoin
+        run: uv run pyright ./viscoin
 
       - name: Run isort
-        run: micromamba run -n viscoin isort ./viscoin --check-only --diff
+        run: uv run isort ./viscoin --check-only --diff

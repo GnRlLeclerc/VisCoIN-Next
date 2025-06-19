@@ -66,7 +66,6 @@ def train_classifier(
         # Training metrics for this epoch
         total_correct = 0
         total_loss = 0
-        total_samples = 0
 
         for inputs, targets in train_loader:
             # Move batch to device
@@ -83,13 +82,13 @@ def train_classifier(
             optimizer.step()
 
             # Update training metrics
-            preds = outputs.argmax(dim=1, keepdim=True)
-            total_correct += preds.eq(targets).sum().item()
+            preds = outputs.argmax(dim=1)
+            batch_size = targets.size(0)
+            total_correct += (preds == targets).sum().item() / batch_size
             total_loss += current_loss
-            total_samples += targets.size(0)
 
         # Append training metrics
-        accuracy = total_correct / total_samples
+        accuracy = total_correct / len(train_loader)
         batch_mean_loss = total_loss / len(train_loader)
         scheduler.step()
 

@@ -1,7 +1,7 @@
 """Classifiers testing functions"""
 
 import torch
-from clip.model import nn
+from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -36,9 +36,6 @@ def test_concept2clip(
     """
 
     concept2clip.eval()
-    batch_size = loader.batch_size
-
-    assert batch_size is not None
 
     with torch.no_grad():
         loss = 0
@@ -51,9 +48,9 @@ def test_concept2clip(
             output = concept2clip(concepts)
 
             # Update metrics
-            loss += F.mse_loss(output, embeddings).item() / batch_size
+            loss += F.mse_loss(output, embeddings).item()
             # No need to divide by batch size, cosine matching is already normalized
-            matching_accuracy += cosine_matching(output, embeddings)
+            matching_accuracy += cosine_matching(embeddings, output)
 
     loss /= len(loader)
     matching_accuracy /= len(loader)

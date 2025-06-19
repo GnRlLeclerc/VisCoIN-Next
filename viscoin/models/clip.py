@@ -3,13 +3,15 @@
 import os
 from typing import Literal
 
-import clip
+import open_clip
 import torch
+from open_clip import create_model_from_pretrained, get_tokenizer
 from torch import Tensor, nn
 from torch.utils.data import DataLoader, TensorDataset
+from torchvision.transforms.transforms import Compose
 from tqdm import tqdm
 
-from viscoin.datasets.utils import get_dataloaders
+from viscoin.datasets.utils import DatasetType, get_dataloaders
 
 
 def _img_cache(mode: Literal["train", "test"], dataset: str, model: str) -> str:
@@ -29,25 +31,39 @@ class CLIP(nn.Module):
 
     NOTE: CLIP embeddings for a same image or text are not deterministic and depend on the batch size.
     The difference is usually of the order of 1e-3.
+
+    NOTE: we use the best CLIP model for 224x224 images in the OpenCLIP repo (https://github.com/mlfoundations/open_clip),
+    which is the ViT-H/14-quickgelu (DFN) model.
+    Huggingface model card: https://huggingface.co/apple/DFN5B-CLIP-ViT-H-14
     """
 
     def __init__(self):
         super().__init__()
 
-        self.kind = "ViT-B/32"
-        model, preprocess = clip.load(self.kind, device="cpu")
-        self.model = model
-        self.preprocess = preprocess
-        self.embedding_size = model.visual.output_dim
+        self.kind = "DFN5B-CLIP-ViT-H-14"
+
+        model, preprocess = create_model_from_pretrained("hf-hub:apple/DFN5B-CLIP-ViT-H-14")  # type: ignore
+        tokenizer = get_tokenizer("ViT-H-14")
+
+        # Type hints based on the actual returned types from open_clip
+        self.model: open_clip.model.CLIP = model  # type: ignore
+        self.preprocess: Compose = preprocess  # type: ignore
+        self.tokenizer: open_clip.tokenizer.SimpleTokenizer = tokenizer  # type: ignore
+        self.embedding_size = int(model.visual.output_dim)  # type: ignore
 
     def encode_image(self, x: Tensor) -> Tensor:
         return self.model.encode_image(x)
 
+    def tokenize(self, text: list[str]) -> Tensor:
+        """Tokenizes text using the CLIP tokenizer."""
+        return self.tokenizer(text)
+
     def encode_text(self, x: Tensor) -> Tensor:
+        """Encodes a text tensor using the CLIP model."""
         return self.model.encode_text(x)
 
     def compute_image_embeddings(
-        self, dataset: Literal["cub", "funnybirds"], device: str = "cuda"
+        self, dataset: DatasetType, device: str = "cuda"
     ) -> tuple[Tensor, Tensor]:
         """Compute CLIP embeddings on the given datasets.
         We define this helper because CLIP needs its own transforms,
@@ -138,11 +154,11 @@ class CLIP(nn.Module):
 
         batch_size = 32
 
-        text = clip.tokenize(captions)
+        text = self.tokenize(captions)
         token_dataset = TensorDataset(text)
         dataloader = DataLoader(token_dataset, batch_size)
 
-        embeddings = torch.zeros((len(captions), self.embedding_size))
+        embeddings = torch.zeros((len(captions), self.embedding_size))  # type: ignore
 
         for i, batch in enumerate(
             tqdm(

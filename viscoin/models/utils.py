@@ -235,4 +235,4 @@ def load_viscoin_pickle(
 
 def _cache(mode: Literal["train", "test"], dataset: str) -> str:
     """Concept space cache path."""
-    return f"checkpoints/concepts/{dataset}_{mode}.pt"
+    return os.path.join("checkpoints", "concepts", f"{dataset}_{mode}.pt")
